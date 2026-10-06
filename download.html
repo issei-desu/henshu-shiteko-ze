@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ダウンロード＆利用案内 - Multi-Track Chroma Video Editor</title>
+  <meta name="theme-color" content="#1a1a22" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #0d0d12;
+      color: #e6e6f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.6;
+      padding: 40px 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      max-width: 960px;
+      width: 100%;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .badge {
+      display: inline-block;
+      background: rgba(0, 240, 255, 0.12);
+      color: #00f0ff;
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      letter-spacing: 0.5px;
+    }
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ffffff 40%, #00f0ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.lead {
+      color: #9cb5db;
+      font-size: 1.05rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+    .card {
+      background: #171722;
+      border: 2px solid #28283a;
+      border-radius: 12px;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      position: relative;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: #00f0ff;
+      box-shadow: 0 12px 30px rgba(0, 240, 255, 0.15);
+    }
+    .card-icon {
+      font-size: 2.6rem;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+    .card-desc {
+      font-size: 0.88rem;
+      color: #a0a0b8;
+      margin-bottom: 24px;
+      flex-grow: 1;
+    }
+    .card-button {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.05s;
+      margin-bottom: 12px;
+    }
+    .card-button:active {
+      transform: scale(0.98);
+    }
+    .btn-primary {
+      background: #00f0ff;
+      color: #000000;
+      border: none;
+    }
+    .btn-primary:hover {
+      background: #4df4ff;
+    }
+    .btn-white {
+      background: #ffffff;
+      color: #111111;
+      border: 1px solid #d0d0d8;
+    }
+    .btn-white:hover {
+      background: #e6e6ee;
+    }
+    .btn-secondary {
+      background: #252535;
+      color: #e0e0ff;
+      border: 1px solid #3c3c52;
+    }
+    .btn-secondary:hover {
+      background: #323247;
+    }
+    .instructions {
+      background: #111118;
+      border: 1px solid #252535;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.8rem;
+      color: #8da4c4;
+      line-height: 1.5;
+    }
+    .instructions ol, .instructions ul {
+      padding-left: 18px;
+      margin-top: 6px;
+    }
+    .features-section {
+      background: #14141d;
+      border: 1px solid #262636;
+      border-radius: 12px;
+      padding: 32px;
+      margin-bottom: 40px;
+    }
+    .features-section h2 {
+      font-size: 1.25rem;
+      color: #ffffff;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .feature-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .feature-item {
+      font-size: 0.88rem;
+      color: #c0c0d8;
+    }
+    .feature-item strong {
+      color: #00f0ff;
+      display: block;
+      margin-bottom: 4px;
+    }
+    footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #6c6c80;
+      margin-top: auto;
+      padding-top: 24px;
+    }
+    .back-link {
+      display: inline-block;
+      color: #00f0ff;
+      text-decoration: none;
+      font-size: 0.9rem;
+      margin-top: 16px;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="badge">マルチプラットフォーム対応</span>
+      <h1>Multi-Track Chroma Video Editor</h1>
+      <p class="lead">グリーンバック透過・テキスト合成・動画録画がブラウザでもPCアプリでも動く動画編集ツール</p>
+      <a href="index.html" class="back-link">← エディタ画面を直接開く</a>
+    </header>
+
+    <div class="grid">
+      <!-- 1. Web版 (ブラウザ / iPhone / iPad) -->
+      <div class="card">
+        <div class="card-icon">🌐</div>
+        <h2 class="card-title">Web版 (ブラウザ / iPhone)</h2>
+        <p class="card-desc">インストール不要。ブラウザで今すぐ編集を開始できます。iPhone / iPad / PCすべてに対応。</p>
+        <a href="index.html" class="card-button btn-primary">Web版を今すぐ開く ▶</a>
+        <div class="instructions">
+          <strong>📱 iPhoneでのアプリ化手順:</strong>
+          <ol>
+            <li>Safariで上記ボタンから開く</li>
+            <li>画面下の共有アイコン（↑）をタップ</li>
+            <li><strong>「ホーム画面に追加」</strong> を選択</li>
+          </ol>
+          ※URLバーのない全画面アプリとして起動します
+        </div>
+      </div>
+
+      <!-- 2. Windows版 -->
+      <div class="card">
+        <div class="card-icon">🪟</div>
+        <h2 class="card-title">Windows 版</h2>
+        <p class="card-desc">専用デスクトップアプリとして利用可能。インストーラー不要で解凍してすぐに起動できます。</p>
+        <a href="https://github.com/issei-desu/henshu-shiteko-ze/releases" target="_blank" class="card-button btn-white">
+          Windows版をダウンロード (ZIP)
+        </a>
+        <div class="instructions">
+          <strong>💻 使い方:</strong>
+          <ol>
+            <li>ダウンロードした ZIP を右クリック →「すべて展開」</li>
+            <li>フォルダ内の <strong><code>MultiTrackVideoEditor.exe</code></strong> をダブルクリック</li>
+          </ol>
+          ※管理者権限・インストール作業不要
+        </div>
+      </div>
+
+      <!-- 3. Linux版 -->
+      <div class="card">
+        <div class="card-icon">🐧</div>
+        <h2 class="card-title">Linux 版</h2>
+        <p class="card-desc">Ubuntu / Debian / Fedora / Arch など主要なLinuxディストリビューションで利用可能です。</p>
+        <a href="https://github.com/issei-desu/henshu-shiteko-ze/releases" target="_blank" class="card-button btn-secondary">
+          Linux版 (AppImage) をダウンロード
+        </a>
+        <div class="instructions">
+          <strong>🐧 使い方:</strong>
+          <ol>
+            <li>ファイルを右クリック → プロパティで「実行可能」にチェック</li>
+            <li>ダブルクリックで即座に起動（または <code>chmod +x</code>）</li>
+          </ol>
+          ※依存関係なしで単体動作します
+        </div>
+      </div>
+    </div>
+
+    <!-- 主な機能紹介 -->
+    <div class="features-section">
+      <h2>✨ 主な機能・特徴</h2>
+      <div class="feature-list">
+        <div class="feature-item">
+          <strong>🟢 クロマキー合成</strong>
+          動画や画像のグリーンバックをリアルタイムに自動透過。感度や輝度も微調整可能。
+        </div>
+        <div class="feature-item">
+          <strong>✏️ テキストレイヤー</strong>
+          自由な文字追加、フォントサイズ・文字色・縁取りカラー・太さのフルカスタマイズ。
+        </div>
+        <div class="feature-item">
+          <strong>⚡ 自動保存 (端末容量ゼロ)</strong>
+          編集操作をリアルタイムに自動保存。再読み込みや誤って閉じても即座に作業復元。
+        </div>
+        <div class="feature-item">
+          <strong>🎥 動画録画・保存</strong>
+          プレビュー内容をWebMまたはMP4でそのまま高画質エクスポート。
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Multi-Track Chroma Video Editor &copy; 2026 issei-desu</p>
+      <p style="margin-top: 6px;"><a href="index.html" style="color: #8da4c4; text-decoration: none;">エディタに戻る</a> &bull; <a href="https://github.com/issei-desu/henshu-shiteko-ze" target="_blank" style="color: #8da4c4; text-decoration: none;">GitHub リポジトリ</a></p>
+    </footer>
+  </div>
+</body>
+</html>

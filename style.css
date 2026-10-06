@@ -469,11 +469,36 @@ canvas {
   font-weight: 800;
 }
 
-/* 最終更新日時 */
-.build-timestamp {
+/* ページの隅のリンク & 最終更新日時 */
+.footer-links {
   position: absolute;
   bottom: 8px;
   right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 100;
+}
+
+.download-guide-link {
+  background: rgba(20, 20, 28, 0.9);
+  border: 1px solid #00f0ff;
+  color: #00f0ff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  text-decoration: none;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+  transition: all 0.15s ease;
+}
+.download-guide-link:hover {
+  background: #00f0ff;
+  color: #000000;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.6);
+}
+
+.build-timestamp {
   background: rgba(20, 20, 28, 0.85);
   border: 1px solid #3a3a4f;
   color: #8da4c4;
@@ -483,7 +508,6 @@ canvas {
   border-radius: 4px;
   pointer-events: none;
   user-select: none;
-  z-index: 100;
 }
 
 /* スマホ (iPhone等) 縦長画面用レスポンシブ対応 */
