@@ -14,10 +14,15 @@
           <h2>素材レイヤー管理</h2>
           <span class="layer-hint">上: 最背面 / 下: 最前面</span>
         </div>
-        <label class="btn white-btn add-btn">
-          ＋ 素材を追加 (画像/動画)
-          <input type="file" id="assetInput" accept="image/*,video/*" multiple hidden />
-        </label>
+        <div class="add-btn-group">
+          <label class="btn white-btn add-btn">
+            ＋ 素材を追加 (画像/動画)
+            <input type="file" id="assetInput" accept="image/*,video/*" multiple hidden />
+          </label>
+          <button id="addTextBtn" type="button" class="btn white-btn add-btn">
+            ＋ テキストを追加
+          </button>
+        </div>
       </div>
 
       <!-- レイヤー一覧（強制縦スクロールエリア） -->

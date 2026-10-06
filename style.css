@@ -94,6 +94,12 @@ html, body {
   color: #9cb5db;
 }
 
+.add-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .add-btn {
   display: block;
   text-align: center;
@@ -243,6 +249,47 @@ html, body {
 
 .control-row input[type="range"] {
   accent-color: #ffffff;
+}
+
+.control-full {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+}
+
+.control-full label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #c0c0d4;
+  font-weight: 600;
+}
+
+.control-full textarea {
+  background: #121218;
+  border: 1px solid #484860;
+  color: #ffffff;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  resize: vertical;
+  min-height: 48px;
+  font-family: inherit;
+}
+.control-full textarea:focus {
+  border-color: #00f0ff;
+  outline: none;
+}
+
+.control-row input[type="color"] {
+  background: #121218;
+  border: 1px solid #484860;
+  border-radius: 4px;
+  height: 32px;
+  width: 100%;
+  cursor: pointer;
+  padding: 2px 4px;
 }
 
 .chroma-toggle {

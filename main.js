@@ -1,4 +1,5 @@
 const assetInput = document.getElementById('assetInput');
+const addTextBtn = document.getElementById('addTextBtn');
 const layerListContainer = document.getElementById('layerList');
 const canvas = document.getElementById('previewCanvas');
 const ctx = canvas.getContext('2d');
@@ -106,6 +107,34 @@ assetInput.addEventListener('change', (e) => {
   assetInput.value = '';
 });
 
+// テキスト追加イベント
+addTextBtn.addEventListener('click', () => {
+  const textCount = layers.filter(l => l.type === 'text').length + 1;
+  const layer = {
+    id: 'layer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+    name: `テキスト ${textCount}`,
+    type: 'text',
+    text: 'テキストを入力',
+    ready: true,
+    duration: 5,
+    fontSize: 60,
+    color: '#ffffff',
+    strokeColor: '#000000',
+    strokeWidth: 4,
+    x: 0,
+    y: 0,
+    scale: 1.0,
+    startTime: 0,
+    endTime: 5,
+    collapsed: false
+  };
+
+  layers.push(layer);
+  updateTimelineBounds();
+  renderAllLayerCards();
+  renderFrame();
+});
+
 // レイヤーカード全体の描画
 function renderAllLayerCards() {
   layerListContainer.innerHTML = '';
@@ -115,24 +144,23 @@ function renderAllLayerCards() {
     card.className = 'layer-card';
     card.id = `card_${layer.id}`;
 
-    const durText = layer.type === 'video' ? `${layer.duration.toFixed(1)}s (動画)` : '5.0s (静止画)';
+    let durText = '5.0s (静止画)';
+    if (layer.type === 'video') {
+      durText = `${layer.duration.toFixed(1)}s (動画)`;
+    } else if (layer.type === 'text') {
+      durText = `${layer.duration.toFixed(1)}s (テキスト)`;
+    }
     const foldText = layer.collapsed ? '開く ▼' : '閉じる ▲';
 
-    card.innerHTML = `
-      <div class="layer-card-header">
-        <div class="header-left">
-          <button type="button" class="btn white-fold-btn" id="fold_btn_${layer.id}">${foldText}</button>
-          <input type="text" class="layer-name-input" id="name_input_${layer.id}" value="${layer.name}" title="クリックして名前を変更" />
-          <span class="duration-badge">${durText}</span>
+    let controlsHTML = '';
+    if (layer.type === 'text') {
+      controlsHTML = `
+        <div class="control-full">
+          <label>テキスト内容:
+            <textarea data-prop="text" rows="2">${layer.text || ''}</textarea>
+          </label>
         </div>
-        <div class="header-actions">
-          <button type="button" class="btn white-icon-btn" data-action="up" title="背面へ (上へ)">▲</button>
-          <button type="button" class="btn white-icon-btn" data-action="down" title="前面へ (下へ)">▼</button>
-          <button type="button" class="btn white-icon-btn delete" data-action="delete" title="削除">✕</button>
-        </div>
-      </div>
 
-      <div class="layer-card-body" id="body_${layer.id}" style="display: ${layer.collapsed ? 'none' : 'flex'};">
         <div class="control-row">
           <label>表示開始 (秒):
             <input type="number" step="0.1" min="0" value="${layer.startTime}" data-prop="startTime" />
@@ -146,7 +174,52 @@ function renderAllLayerCards() {
           <label>位置 X (%):
             <input type="range" min="-100" max="100" value="${layer.x}" data-prop="x" />
           </label>
-          <label>位置 Y (%):
+          <label>位置 Y (% 上下):
+            <input type="range" min="-100" max="100" value="${layer.y}" data-prop="y" />
+          </label>
+        </div>
+
+        <div class="control-row">
+          <label>文字サイズ:
+            <input type="range" min="16" max="150" step="1" value="${layer.fontSize || 60}" data-prop="fontSize" />
+          </label>
+          <label>拡大率:
+            <input type="range" min="0.1" max="3.0" step="0.05" value="${layer.scale}" data-prop="scale" />
+          </label>
+        </div>
+
+        <div class="control-row">
+          <label>文字色:
+            <input type="color" value="${layer.color || '#ffffff'}" data-prop="color" />
+          </label>
+          <label>縁取り色:
+            <input type="color" value="${layer.strokeColor || '#000000'}" data-prop="strokeColor" />
+          </label>
+        </div>
+
+        <div class="control-row">
+          <label>縁取り太さ:
+            <input type="range" min="0" max="20" step="1" value="${layer.strokeWidth !== undefined ? layer.strokeWidth : 4}" data-prop="strokeWidth" />
+          </label>
+          <div></div>
+        </div>
+      `;
+    } else {
+      controlsHTML = `
+        <div class="control-row">
+          <label>表示開始 (秒):
+            <input type="number" step="0.1" min="0" value="${layer.startTime}" data-prop="startTime" />
+          </label>
+          <label>表示終了 (秒):
+            <input type="number" step="0.1" min="0.1" value="${layer.endTime}" data-prop="endTime" />
+          </label>
+        </div>
+
+        <div class="control-row">
+          <label>位置 X (%):
+            <input type="range" min="-100" max="100" value="${layer.x}" data-prop="x" />
+          </label>
+          <label>位置 Y (% 上下):
             <input type="range" min="-100" max="100" value="${layer.y}" data-prop="y" />
           </label>
         </div>
@@ -171,6 +244,25 @@ function renderAllLayerCards() {
             </label>
           </div>
         </div>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="layer-card-header">
+        <div class="header-left">
+          <button type="button" class="btn white-fold-btn" id="fold_btn_${layer.id}">${foldText}</button>
+          <input type="text" class="layer-name-input" id="name_input_${layer.id}" value="${layer.name}" title="クリックして名前を変更" />
+          <span class="duration-badge">${durText}</span>
+        </div>
+        <div class="header-actions">
+          <button type="button" class="btn white-icon-btn" data-action="up" title="背面へ (上へ)">▲</button>
+          <button type="button" class="btn white-icon-btn" data-action="down" title="前面へ (下へ)">▼</button>
+          <button type="button" class="btn white-icon-btn delete" data-action="delete" title="削除">✕</button>
+        </div>
+      </div>
+
+      <div class="layer-card-body" id="body_${layer.id}" style="display: ${layer.collapsed ? 'none' : 'flex'};">
+        ${controlsHTML}
       </div>
     `;
 
@@ -219,13 +311,15 @@ function renderAllLayerCards() {
     });
 
     // 4. 入力変更イベント
-    card.querySelectorAll('.layer-card-body input').forEach(input => {
+    card.querySelectorAll('.layer-card-body input, .layer-card-body textarea').forEach(input => {
       input.addEventListener('input', (e) => {
         const prop = e.target.dataset.prop;
         if (e.target.type === 'checkbox') {
           layer[prop] = e.target.checked;
           const chromaBox = card.querySelector(`#chroma_box_${layer.id}`);
-          chromaBox.style.display = e.target.checked ? 'block' : 'none';
+          if (chromaBox) chromaBox.style.display = e.target.checked ? 'block' : 'none';
+        } else if (e.target.type === 'color' || e.target.tagName === 'TEXTAREA') {
+          layer[prop] = e.target.value;
         } else {
           layer[prop] = parseFloat(e.target.value);
           if (prop === 'endTime' || prop === 'startTime') {
@@ -307,6 +401,42 @@ function renderFrame() {
     if (!layer.ready) return;
     if (currentTime < layer.startTime || currentTime > layer.endTime) return;
 
+    // --- テキストレイヤーの描画 ---
+    if (layer.type === 'text') {
+      const computedFontSize = (layer.fontSize || 60) * (layer.scale || 1.0);
+      ctx.save();
+      ctx.font = `bold ${computedFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const lines = (layer.text || '').split('\n');
+      const lineHeight = computedFontSize * 1.3;
+      const totalHeight = lines.length * lineHeight;
+
+      // 画面中央基準 + オフセット (Y軸反転: 上がプラス、下がマイナス)
+      const posX = canvas.width / 2 + (layer.x / 100) * canvas.width;
+      const posY = canvas.height / 2 - (layer.y / 100) * canvas.height;
+
+      const startY = posY - (totalHeight / 2) + (lineHeight / 2);
+
+      lines.forEach((line, i) => {
+        const curY = startY + i * lineHeight;
+        const strokeW = (layer.strokeWidth !== undefined ? layer.strokeWidth : 4) * (layer.scale || 1.0);
+        if (strokeW > 0) {
+          ctx.lineWidth = strokeW * 2;
+          ctx.strokeStyle = layer.strokeColor || '#000000';
+          ctx.lineJoin = 'round';
+          ctx.miterLimit = 2;
+          ctx.strokeText(line, posX, curY);
+        }
+        ctx.fillStyle = layer.color || '#ffffff';
+        ctx.fillText(line, posX, curY);
+      });
+      ctx.restore();
+      return;
+    }
+
+    // --- 画像 / 動画レイヤーの描画 ---
     const elem = layer.element;
     const origW = layer.type === 'video' ? elem.videoWidth : elem.width;
     const origH = layer.type === 'video' ? elem.videoHeight : elem.height;
@@ -315,8 +445,9 @@ function renderFrame() {
     const drawW = canvas.width * layer.scale;
     const drawH = (origH / origW) * drawW;
 
+    // Y軸反転: (canvas.height - drawH) / 2 - (layer.y / 100) * canvas.height
     const posX = (canvas.width - drawW) / 2 + (layer.x / 100) * canvas.width;
-    const posY = (canvas.height - drawH) / 2 + (layer.y / 100) * canvas.height;
+    const posY = (canvas.height - drawH) / 2 - (layer.y / 100) * canvas.height;
 
     if (layer.chromaEnabled) {
       offCanvas.width = origW;
