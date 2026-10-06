@@ -6,6 +6,11 @@ const ctx = canvas.getContext('2d');
 const canvasFrame = document.getElementById('canvasFrame');
 const aspectSelect = document.getElementById('aspectSelect');
 
+const saveProjectBtn = document.getElementById('saveProjectBtn');
+const loadProjectInput = document.getElementById('loadProjectInput');
+const resetProjectBtn = document.getElementById('resetProjectBtn');
+const saveBadge = document.getElementById('saveBadge');
+
 const currentTimeDisplay = document.getElementById('currentTimeDisplay');
 const maxTimeDisplay = document.getElementById('maxTimeDisplay');
 const timeSeeker = document.getElementById('timeSeeker');
@@ -22,6 +27,96 @@ let currentTime = 0;
 let lastTimestamp = null;
 let maxDuration = 10;
 
+// ========================================================
+// 超軽量・容量ゼロの保存・復元システム (localStorage / JSON)
+// ========================================================
+const STORAGE_KEY = 'chroma_video_editor_autosave_v1';
+let autoSaveTimer = null;
+
+function getProjectData() {
+  return {
+    version: '1.0',
+    timestamp: Date.now(),
+    aspectRatio: aspectSelect.value,
+    layers: layers.map(l => {
+      const base = {
+        id: l.id,
+        name: l.name,
+        type: l.type,
+        duration: l.duration,
+        startTime: l.startTime,
+        endTime: l.endTime,
+        x: l.x,
+        y: l.y,
+        scale: l.scale,
+        collapsed: !!l.collapsed
+      };
+      if (l.type === 'text') {
+        base.text = l.text;
+        base.fontSize = l.fontSize;
+        base.color = l.color;
+        base.strokeColor = l.strokeColor;
+        base.strokeWidth = l.strokeWidth;
+      } else {
+        base.chromaEnabled = l.chromaEnabled;
+        base.chromaThreshold = l.chromaThreshold;
+        base.minGreen = l.minGreen;
+      }
+      return base;
+    })
+  };
+}
+
+function triggerAutoSave() {
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => {
+    try {
+      const data = getProjectData();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      if (saveBadge) {
+        saveBadge.textContent = '⚡ 保存完了';
+        saveBadge.style.color = '#4ade80';
+      }
+    } catch (e) {
+      console.warn('自動保存エラー:', e);
+    }
+  }, 400);
+}
+
+function loadProject(project) {
+  if (!project || !Array.isArray(project.layers)) return;
+
+  if (project.aspectRatio) {
+    aspectSelect.value = project.aspectRatio;
+    const [w, h] = project.aspectRatio.split('x').map(Number);
+    canvas.width = w;
+    canvas.height = h;
+    canvasFrame.style.aspectRatio = `${w} / ${h}`;
+  }
+
+  layers = project.layers.map(saved => {
+    if (saved.type === 'text') {
+      return {
+        ...saved,
+        ready: true
+      };
+    } else {
+      const isVideo = saved.type === 'video';
+      const dummyElem = isVideo ? document.createElement('video') : new Image();
+      return {
+        ...saved,
+        element: dummyElem,
+        ready: false,
+        needsRelink: true
+      };
+    }
+  });
+
+  updateTimelineBounds();
+  renderAllLayerCards();
+  renderFrame();
+}
+
 // アスペクト比変更
 aspectSelect.addEventListener('change', () => {
   const [w, h] = aspectSelect.value.split('x').map(Number);
@@ -29,6 +124,7 @@ aspectSelect.addEventListener('change', () => {
   canvas.height = h;
   canvasFrame.style.aspectRatio = `${w} / ${h}`;
   renderFrame();
+  triggerAutoSave();
 });
 
 function formatTime(sec) {
@@ -88,6 +184,7 @@ assetInput.addEventListener('change', (e) => {
         updateTimelineBounds();
         renderAllLayerCards();
         renderFrame();
+        triggerAutoSave();
       };
     } else {
       layer.element.src = url;
@@ -98,6 +195,7 @@ assetInput.addEventListener('change', (e) => {
         updateTimelineBounds();
         renderAllLayerCards();
         renderFrame();
+        triggerAutoSave();
       };
     }
 
@@ -105,6 +203,7 @@ assetInput.addEventListener('change', (e) => {
   });
 
   assetInput.value = '';
+  triggerAutoSave();
 });
 
 // テキスト追加イベント
@@ -133,6 +232,7 @@ addTextBtn.addEventListener('click', () => {
   updateTimelineBounds();
   renderAllLayerCards();
   renderFrame();
+  triggerAutoSave();
 });
 
 // レイヤーカード全体の描画
@@ -151,6 +251,19 @@ function renderAllLayerCards() {
       durText = `${layer.duration.toFixed(1)}s (テキスト)`;
     }
     const foldText = layer.collapsed ? '開く ▼' : '閉じる ▲';
+
+    let relinkHTML = '';
+    if (layer.type !== 'text' && layer.needsRelink && !layer.ready) {
+      relinkHTML = `
+        <div class="relink-alert">
+          <span class="relink-text">⚠️ 素材ファイルの再読み込みが必要です（${layer.name}）</span>
+          <label class="btn white-btn relink-btn">
+            📁 同じ（または新しい）ファイルを選択
+            <input type="file" class="relink-input" accept="${layer.type === 'video' ? 'video/*' : 'image/*'}" hidden />
+          </label>
+        </div>
+      `;
+    }
 
     let controlsHTML = '';
     if (layer.type === 'text') {
@@ -206,6 +319,7 @@ function renderAllLayerCards() {
       `;
     } else {
       controlsHTML = `
+        ${relinkHTML}
         <div class="control-row">
           <label>表示開始 (秒):
             <input type="number" step="0.1" min="0" value="${layer.startTime}" data-prop="startTime" />
@@ -266,6 +380,42 @@ function renderAllLayerCards() {
       </div>
     `;
 
+    // 再リンクファイル選択リスナー
+    const relinkInput = card.querySelector('.relink-input');
+    if (relinkInput) {
+      relinkInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        layer.name = file.name;
+        const isVideo = file.type.startsWith('video/') || layer.type === 'video';
+        if (isVideo) {
+          layer.element = document.createElement('video');
+          layer.element.src = url;
+          layer.element.loop = true;
+          layer.element.muted = true;
+          layer.element.playsInline = true;
+          layer.element.onloadedmetadata = () => {
+            layer.ready = true;
+            layer.needsRelink = false;
+            renderAllLayerCards();
+            renderFrame();
+            triggerAutoSave();
+          };
+        } else {
+          layer.element = new Image();
+          layer.element.src = url;
+          layer.element.onload = () => {
+            layer.ready = true;
+            layer.needsRelink = false;
+            renderAllLayerCards();
+            renderFrame();
+            triggerAutoSave();
+          };
+        }
+      });
+    }
+
     // 1. 折りたたみ・展開ボタン
     const foldBtn = card.querySelector(`#fold_btn_${layer.id}`);
     const cardBody = card.querySelector(`#body_${layer.id}`);
@@ -280,12 +430,14 @@ function renderAllLayerCards() {
         cardBody.style.display = 'flex';
         foldBtn.textContent = '閉じる ▲';
       }
+      triggerAutoSave();
     });
 
     // 2. 素材名変更イベント
     const nameInput = card.querySelector(`#name_input_${layer.id}`);
     nameInput.addEventListener('input', (e) => {
       layer.name = e.target.value;
+      triggerAutoSave();
     });
 
     // 3. 順序入れ替え・削除ボタン
@@ -297,15 +449,18 @@ function renderAllLayerCards() {
           [layers[index - 1], layers[index]] = [layers[index], layers[index - 1]];
           renderAllLayerCards();
           renderFrame();
+          triggerAutoSave();
         } else if (action === 'down' && index < layers.length - 1) {
           [layers[index + 1], layers[index]] = [layers[index], layers[index + 1]];
           renderAllLayerCards();
           renderFrame();
+          triggerAutoSave();
         } else if (action === 'delete') {
           layers = layers.filter(l => l.id !== layer.id);
           renderAllLayerCards();
           updateTimelineBounds();
           renderFrame();
+          triggerAutoSave();
         }
       });
     });
@@ -314,6 +469,7 @@ function renderAllLayerCards() {
     card.querySelectorAll('.layer-card-body input, .layer-card-body textarea').forEach(input => {
       input.addEventListener('input', (e) => {
         const prop = e.target.dataset.prop;
+        if (!prop) return;
         if (e.target.type === 'checkbox') {
           layer[prop] = e.target.checked;
           const chromaBox = card.querySelector(`#chroma_box_${layer.id}`);
@@ -327,6 +483,7 @@ function renderAllLayerCards() {
           }
         }
         renderFrame();
+        triggerAutoSave();
       });
     });
 
@@ -500,10 +657,22 @@ function startExport() {
   syncVideosToTime();
 
   const stream = canvas.captureStream(30);
-  let options = { mimeType: 'video/webm;codecs=vp9' };
-  if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-    options = { mimeType: 'video/webm' };
+  
+  // MIMEタイプの判定 (iOS Safari は video/mp4 を優先)
+  let mimeType = 'video/webm;codecs=vp9';
+  let ext = 'webm';
+  if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
+    mimeType = 'video/mp4;codecs=avc1';
+    ext = 'mp4';
+  } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+    mimeType = 'video/mp4';
+    ext = 'mp4';
+  } else if (!MediaRecorder.isTypeSupported(mimeType)) {
+    mimeType = 'video/webm';
+    ext = 'webm';
   }
+
+  let options = { mimeType };
 
   recordedChunks = [];
   try {
@@ -522,7 +691,7 @@ function startExport() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `video_export_${Date.now()}.webm`;
+    a.download = `video_export_${Date.now()}.${ext}`;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {
@@ -553,5 +722,77 @@ function stopExport() {
   recordStatus.textContent = 'ファイルを生成中...';
 }
 
-updateTimelineBounds();
-renderFrame();
+// ========================================================
+// ツールバー操作 (プロジェクト保存 / 読み込み / リセット)
+// ========================================================
+if (saveProjectBtn) {
+  saveProjectBtn.addEventListener('click', () => {
+    const data = getProjectData();
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `video_project_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 200);
+  });
+}
+
+if (loadProjectInput) {
+  loadProjectInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const project = JSON.parse(evt.target.result);
+        loadProject(project);
+        triggerAutoSave();
+        alert('プロジェクトを読み込みました！');
+      } catch (err) {
+        alert('無効なプロジェクトファイルです。');
+      }
+    };
+    reader.readAsText(file);
+    loadProjectInput.value = '';
+  });
+}
+
+if (resetProjectBtn) {
+  resetProjectBtn.addEventListener('click', () => {
+    if (confirm('現在の編集内容をクリアして初期状態に戻しますか？')) {
+      layers = [];
+      localStorage.removeItem(STORAGE_KEY);
+      updateTimelineBounds();
+      renderAllLayerCards();
+      renderFrame();
+      if (saveBadge) {
+        saveBadge.textContent = 'クリア完了';
+        saveBadge.style.color = '#ff8888';
+      }
+    }
+  });
+}
+
+// ========================================================
+// 起動時の初期化 (自動保存データがあれば復元)
+// ========================================================
+try {
+  const savedStr = localStorage.getItem(STORAGE_KEY);
+  if (savedStr) {
+    const savedData = JSON.parse(savedStr);
+    loadProject(savedData);
+    if (saveBadge) saveBadge.textContent = '⚡ 前回の作業を復元';
+  } else {
+    updateTimelineBounds();
+    renderFrame();
+  }
+} catch (e) {
+  updateTimelineBounds();
+  renderFrame();
+}

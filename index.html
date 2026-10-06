@@ -16,6 +16,15 @@
           <h2>素材レイヤー管理</h2>
           <span class="layer-hint">上: 最背面 / 下: 最前面</span>
         </div>
+        <div class="project-toolbar">
+          <button id="saveProjectBtn" type="button" class="btn white-mini-btn" title="編集内容をファイルに保存">💾 保存</button>
+          <label class="btn white-mini-btn" title="保存したプロジェクトファイルを開く">
+            📂 開く
+            <input type="file" id="loadProjectInput" accept=".json" hidden />
+          </label>
+          <button id="resetProjectBtn" type="button" class="btn white-mini-btn danger-btn" title="編集内容を初期化">🗑️ クリア</button>
+          <span id="saveBadge" class="save-badge">⚡ 自動保存中</span>
+        </div>
         <div class="add-btn-group">
           <label class="btn white-btn add-btn">
             ＋ 素材を追加 (画像/動画)
