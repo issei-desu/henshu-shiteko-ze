@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Multi-Track Chroma Video Editor</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-container">
+    <!-- サイドバー（Grid 3段構造：ヘッダー / スクロールリスト / 下部設定） -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="title-row">
+          <h2>素材レイヤー管理</h2>
+          <span class="layer-hint">上: 最背面 / 下: 最前面</span>
+        </div>
+        <label class="btn white-btn add-btn">
+          ＋ 素材を追加 (画像/動画)
+          <input type="file" id="assetInput" accept="image/*,video/*" multiple hidden />
+        </label>
+      </div>
+
+      <!-- レイヤー一覧（強制縦スクロールエリア） -->
+      <div id="layerList" class="layer-list"></div>
+
+      <!-- 出力設定 ＆ 録画パネル -->
+      <div class="export-panel">
+        <div class="aspect-control">
+          <label for="aspectSelect">動画枠サイズ (アスペクト比):</label>
+          <select id="aspectSelect">
+            <option value="1920x1080">16:9 (横動画 / YouTube 1920x1080)</option>
+            <option value="1080x1920">9:16 (縦動画 / Shorts, TikTok 1080x1920)</option>
+            <option value="1080x1080">1:1 (正方形 / Instagram 1080x1080)</option>
+            <option value="1440x1080">4:3 (スタンダード 1440x1080)</option>
+          </select>
+        </div>
+        <div class="button-group">
+          <button id="recordBtn" type="button" class="btn white-btn-record">動画を録画・保存</button>
+        </div>
+        <div id="recordStatus" class="record-status"></div>
+      </div>
+    </aside>
+
+    <!-- プレビューエリア -->
+    <main class="preview-area">
+      <div class="stage-container">
+        <!-- 画面外は黒、画面内（キャンバス）は白 -->
+        <div class="canvas-frame" id="canvasFrame">
+          <canvas id="previewCanvas" width="1920" height="1080"></canvas>
+        </div>
+
+        <!-- プレビュー直下のシークバー＆タイム表示 -->
+        <div class="timeline-bar-area">
+          <button id="playBtn" type="button" class="btn white-mini-btn">▶ 再生</button>
+          <input type="range" id="timeSeeker" min="0" max="10" step="0.05" value="0" />
+          <div class="time-display">
+            <span id="currentTimeDisplay">00:00.00</span> / <span id="maxTimeDisplay">00:10.00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ページの隅の最終更新日時 -->
+      <div class="build-timestamp">
+        最終更新日時: 2026/10/04 02:27
+      </div>
+    </main>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

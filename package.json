@@ -1,0 +1,26 @@
+{
+  "name": "multi-track-chroma-video-editor",
+  "version": "1.0.0",
+  "description": "Multi-Track Chroma Video Editor",
+  "main": "electron-main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "build": {
+    "appId": "com.chroma.videoeditor",
+    "productName": "MultiTrackVideoEditor",
+    "win": {
+      "target": [
+        "zip"
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^26.15.3"
+  }
+}
