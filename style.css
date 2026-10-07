@@ -357,7 +357,8 @@ html, body {
   gap: 10px;
 }
 
-.aspect-control {
+.aspect-control,
+.format-control {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -365,7 +366,8 @@ html, body {
   color: #c0c0d8;
 }
 
-.aspect-control select {
+.aspect-control select,
+.format-control select {
   background: #252533;
   border: 1px solid #484860;
   color: #ffffff;

@@ -5,6 +5,7 @@ const canvas = document.getElementById('previewCanvas');
 const ctx = canvas.getContext('2d');
 const canvasFrame = document.getElementById('canvasFrame');
 const aspectSelect = document.getElementById('aspectSelect');
+const formatSelect = document.getElementById('formatSelect');
 
 const saveProjectBtn = document.getElementById('saveProjectBtn');
 const loadProjectInput = document.getElementById('loadProjectInput');
@@ -38,6 +39,7 @@ function getProjectData() {
     version: '1.0',
     timestamp: Date.now(),
     aspectRatio: aspectSelect.value,
+    exportFormat: formatSelect ? formatSelect.value : 'mp4',
     layers: layers.map(l => {
       const base = {
         id: l.id,
@@ -94,6 +96,13 @@ function loadProject(project) {
     canvasFrame.style.aspectRatio = `${w} / ${h}`;
   }
 
+  if (project.exportFormat && formatSelect) {
+    const opt = formatSelect.querySelector(`option[value="${project.exportFormat}"]`);
+    if (opt && !opt.disabled) {
+      formatSelect.value = project.exportFormat;
+    }
+  }
+
   layers = project.layers.map(saved => {
     if (saved.type === 'text') {
       return {
@@ -126,6 +135,12 @@ aspectSelect.addEventListener('change', () => {
   renderFrame();
   triggerAutoSave();
 });
+
+if (formatSelect) {
+  formatSelect.addEventListener('change', () => {
+    triggerAutoSave();
+  });
+}
 
 function formatTime(sec) {
   const m = Math.floor(sec / 60);
@@ -658,27 +673,47 @@ function startExport() {
 
   const stream = canvas.captureStream(30);
   
-  // MIMEタイプの判定 (iOS Safari は video/mp4 を優先)
-  let mimeType = 'video/webm;codecs=vp9';
-  let ext = 'webm';
-  if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
-    mimeType = 'video/mp4;codecs=avc1';
-    ext = 'mp4';
-  } else if (MediaRecorder.isTypeSupported('video/mp4')) {
-    mimeType = 'video/mp4';
-    ext = 'mp4';
-  } else if (!MediaRecorder.isTypeSupported(mimeType)) {
-    mimeType = 'video/webm';
-    ext = 'webm';
+  // 選択された形式（MP4 または WebM）に基づいて MIMEタイプと拡張子を決定
+  const selectedFormat = formatSelect ? formatSelect.value : 'mp4';
+  let mimeType = '';
+  let ext = selectedFormat;
+
+  if (selectedFormat === 'mp4') {
+    if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
+      mimeType = 'video/mp4;codecs=avc1';
+    } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+      mimeType = 'video/mp4';
+    } else {
+      // MP4非対応ブラウザ時のフォールバック
+      mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : (MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : '');
+      ext = 'webm';
+      alert('お使いの環境（ブラウザ）はMP4形式の直接書き出しに対応していないため、WebM形式で保存します。');
+    }
+  } else {
+    // webm
+    if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+      mimeType = 'video/webm;codecs=vp9';
+    } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+      mimeType = 'video/webm;codecs=vp8';
+    } else if (MediaRecorder.isTypeSupported('video/webm')) {
+      mimeType = 'video/webm';
+    } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+      // フォールバック (iOS Safari等)
+      mimeType = 'video/mp4';
+      ext = 'mp4';
+      alert('お使いの環境はWebM形式に対応していないため、MP4形式で保存します。');
+    }
   }
 
-  let options = { mimeType };
+  let options = mimeType ? { mimeType } : {};
 
   recordedChunks = [];
   try {
     mediaRecorder = new MediaRecorder(stream, options);
   } catch (e) {
-    alert("録画の初期化に失敗しました。");
+    alert("録画の初期化に失敗しました: " + (e.message || e));
     return;
   }
 
@@ -687,7 +722,7 @@ function startExport() {
   };
 
   mediaRecorder.onstop = () => {
-    const blob = new Blob(recordedChunks, { type: options.mimeType });
+    const blob = new Blob(recordedChunks, { type: mimeType || 'video/webm' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -699,14 +734,14 @@ function startExport() {
       URL.revokeObjectURL(url);
     }, 200);
 
-    recordStatus.textContent = '保存完了！動画がダウンロードされました。';
+    recordStatus.textContent = `保存完了！(${ext.toUpperCase()} 形式でダウンロードされました)`;
     setTimeout(() => { recordStatus.textContent = ''; }, 3500);
   };
 
   mediaRecorder.start();
   isRecording = true;
   recordBtn.textContent = '録画停止 (保存)';
-  recordStatus.textContent = '● タイムラインを録画・書き出し中...';
+  recordStatus.textContent = `● タイムラインを録画・書き出し中 (${ext.toUpperCase()})...`;
 
   if (!isPlaying) {
     playBtn.click();
@@ -779,9 +814,44 @@ if (resetProjectBtn) {
   });
 }
 
+function initFormatSelect() {
+  if (!formatSelect || typeof MediaRecorder === 'undefined') return;
+
+  const mp4Option = formatSelect.querySelector('option[value="mp4"]');
+  const webmOption = formatSelect.querySelector('option[value="webm"]');
+
+  const mp4Supported = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1') || MediaRecorder.isTypeSupported('video/mp4');
+  const webmSupported = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') || MediaRecorder.isTypeSupported('video/webm');
+
+  if (mp4Option) {
+    if (!mp4Supported) {
+      mp4Option.textContent = 'MP4 (.mp4) ※非対応環境';
+      mp4Option.disabled = true;
+    } else {
+      mp4Option.textContent = 'MP4 (.mp4)';
+    }
+  }
+
+  if (webmOption) {
+    if (!webmSupported) {
+      webmOption.textContent = 'WebM (.webm) ※非対応環境';
+      webmOption.disabled = true;
+    } else {
+      webmOption.textContent = 'WebM (.webm)';
+    }
+  }
+
+  if (mp4Supported) {
+    formatSelect.value = 'mp4';
+  } else if (webmSupported) {
+    formatSelect.value = 'webm';
+  }
+}
+
 // ========================================================
 // 起動時の初期化 (自動保存データがあれば復元)
 // ========================================================
+initFormatSelect();
 try {
   const savedStr = localStorage.getItem(STORAGE_KEY);
   if (savedStr) {
