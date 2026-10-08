@@ -7,6 +7,19 @@ const canvasFrame = document.getElementById('canvasFrame');
 const aspectSelect = document.getElementById('aspectSelect');
 const formatSelect = document.getElementById('formatSelect');
 
+const modeControlArea = document.getElementById('modeControlArea');
+const durationSettingRow = document.getElementById('durationSettingRow');
+const exportDurationInput = document.getElementById('exportDurationInput');
+const useTimelineMaxBtn = document.getElementById('useTimelineMaxBtn');
+const shareActionArea = document.getElementById('shareActionArea');
+const saveToPhotosBtn = document.getElementById('saveToPhotosBtn');
+const imagePreviewArea = document.getElementById('imagePreviewArea');
+const modeTabs = document.querySelectorAll('.mode-tab');
+
+const modeAutoBtn = document.getElementById('modeAutoBtn');
+const modePcBtn = document.getElementById('modePcBtn');
+const modeMobileBtn = document.getElementById('modeMobileBtn');
+
 const saveProjectBtn = document.getElementById('saveProjectBtn');
 const loadProjectInput = document.getElementById('loadProjectInput');
 const resetProjectBtn = document.getElementById('resetProjectBtn');
@@ -28,6 +41,22 @@ let currentTime = 0;
 let lastTimestamp = null;
 let maxDuration = 10;
 
+// エクスポート・録画関連の状態
+let currentExportMode = 'instant'; // 'instant' | 'timer' | 'manual'
+let isRecording = false;
+let isRecordingGif = false;
+let isExportingGif = false;
+let recordedChunks = [];
+let recordedSeconds = 0;
+let exportTargetDuration = 5;
+let gifRecordedFrames = [];
+let lastGifCaptureTime = 0;
+let activeRecordingExt = 'mp4';
+
+let lastExportedFile = null;
+let lastExportedBlob = null;
+let lastExportedUrl = null;
+
 // ========================================================
 // 超軽量・容量ゼロの保存・復元システム (localStorage / JSON)
 // ========================================================
@@ -40,6 +69,8 @@ function getProjectData() {
     timestamp: Date.now(),
     aspectRatio: aspectSelect.value,
     exportFormat: formatSelect ? formatSelect.value : 'mp4',
+    exportMode: currentExportMode,
+    exportDuration: exportDurationInput ? parseFloat(exportDurationInput.value) || 5 : 5,
     layers: layers.map(l => {
       const base = {
         id: l.id,
@@ -101,6 +132,15 @@ function loadProject(project) {
     if (opt && !opt.disabled) {
       formatSelect.value = project.exportFormat;
     }
+  }
+
+  if (project.exportMode && typeof setExportMode === 'function') {
+    setExportMode(project.exportMode);
+  }
+
+  if (project.exportDuration && exportDurationInput) {
+    exportDurationInput.value = project.exportDuration;
+    exportTargetDuration = project.exportDuration;
   }
 
   layers = project.layers.map(saved => {
@@ -561,6 +601,33 @@ function animationLoop(timestamp) {
   });
 
   renderFrame();
+
+  // 録画・書き出し中の進捗計測 ＆ 自動停止処理
+  if (isRecording) {
+    recordedSeconds += delta;
+
+    if (isRecordingGif) {
+      // 10fps (約100msごと) にフレームをキャプチャ
+      if (timestamp - lastGifCaptureTime >= 100) {
+        lastGifCaptureTime = timestamp;
+        captureGifFrame();
+      }
+    }
+
+    if (currentExportMode === 'instant' || currentExportMode === 'timer') {
+      const progress = Math.min(100, Math.round((recordedSeconds / exportTargetDuration) * 100));
+      const modeLabel = currentExportMode === 'instant' ? '⚡ 高速書き出し中' : '⏱️ 指定秒数録画中';
+      recordStatus.innerHTML = `<span>● ${modeLabel} (${activeRecordingExt.toUpperCase()}): <strong>${recordedSeconds.toFixed(1)}s / ${exportTargetDuration.toFixed(1)}s (${progress}%)</strong></span>`;
+
+      if (recordedSeconds >= exportTargetDuration) {
+        stopExport();
+        return;
+      }
+    } else {
+      recordStatus.innerHTML = `<span>● 自由録画中 (${activeRecordingExt.toUpperCase()}): <strong>${recordedSeconds.toFixed(1)}秒 経過</strong> [停止ボタンで保存]</span>`;
+    }
+  }
+
   requestAnimationFrame(animationLoop);
 }
 
@@ -647,18 +714,351 @@ function renderFrame() {
   });
 }
 
-// 動画書き出し
+// ========================================================
+// 動画・静止画・GIF 書き出し ＆ 3つの保存方式システム
+// ========================================================
 let mediaRecorder = null;
-let recordedChunks = [];
-let isRecording = false;
+const gifMaxDim = 640;
+let gifTempCanvas = null;
+let gifTempCtx = null;
 
-recordBtn.addEventListener('click', () => {
-  if (!isRecording) {
-    startExport();
-  } else {
-    stopExport();
+function dataURLtoBlob(dataurl) {
+  const arr = dataurl.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
   }
-});
+  return new Blob([u8arr], { type: mime });
+}
+
+function captureGifFrame() {
+  if (!gifTempCanvas) {
+    gifTempCanvas = document.createElement('canvas');
+    let targetW = canvas.width;
+    let targetH = canvas.height;
+    if (targetW > gifMaxDim || targetH > gifMaxDim) {
+      if (targetW >= targetH) {
+        targetH = Math.round((targetH * gifMaxDim) / targetW);
+        targetW = gifMaxDim;
+      } else {
+        targetW = Math.round((targetW * gifMaxDim) / targetH);
+        targetH = gifMaxDim;
+      }
+    }
+    gifTempCanvas.width = targetW;
+    gifTempCanvas.height = targetH;
+    gifTempCtx = gifTempCanvas.getContext('2d');
+  }
+
+  gifTempCtx.drawImage(canvas, 0, 0, gifTempCanvas.width, gifTempCanvas.height);
+  gifRecordedFrames.push(gifTempCanvas.toDataURL('image/jpeg', 0.8));
+}
+
+function processRecordedGif() {
+  if (gifRecordedFrames.length === 0) {
+    alert('キャプチャされたフレームがありません。');
+    isRecording = false;
+    isRecordingGif = false;
+    updateExportUIState();
+    return;
+  }
+
+  recordStatus.textContent = `GIFエンコード中 (${gifRecordedFrames.length}フレーム)...`;
+  if (recordBtn) recordBtn.disabled = true;
+
+  if (typeof gifshot !== 'undefined') {
+    gifshot.createGIF({
+      images: gifRecordedFrames,
+      gifWidth: gifTempCanvas.width,
+      gifHeight: gifTempCanvas.height,
+      interval: 0.1,
+      numWorkers: 2,
+      progressCallback: (p) => {
+        recordStatus.textContent = `GIFエンコード中: ${Math.round(p * 100)}%`;
+      }
+    }, (obj) => {
+      isRecording = false;
+      isRecordingGif = false;
+      if (recordBtn) recordBtn.disabled = false;
+      updateExportUIState();
+
+      if (obj.error) {
+        alert('GIF生成に失敗しました: ' + obj.error);
+        recordStatus.textContent = '';
+        return;
+      }
+
+      const blob = dataURLtoBlob(obj.image);
+      handleExportDone(blob, 'gif');
+    });
+  } else {
+    alert('GIFライブラリ (gifshot) が読み込まれていません。');
+    isRecording = false;
+    isRecordingGif = false;
+    if (recordBtn) recordBtn.disabled = false;
+    updateExportUIState();
+  }
+}
+
+async function exportInstantGif(targetDuration) {
+  if (layers.length === 0) {
+    alert("素材を1つ以上追加してください。");
+    return;
+  }
+  isExportingGif = true;
+  if (recordBtn) {
+    recordBtn.disabled = true;
+    recordBtn.textContent = '⌛ フレーム抽出中...';
+  }
+
+  const fps = 10;
+  const duration = Math.max(0.5, Math.min(targetDuration, maxDuration || 10));
+  const totalFrames = Math.max(1, Math.round(duration * fps));
+  const stepTime = duration / totalFrames;
+
+  let targetW = canvas.width;
+  let targetH = canvas.height;
+  if (targetW > gifMaxDim || targetH > gifMaxDim) {
+    if (targetW >= targetH) {
+      targetH = Math.round((targetH * gifMaxDim) / targetW);
+      targetW = maxDim;
+    } else {
+      targetW = Math.round((targetW * gifMaxDim) / targetH);
+      targetH = gifMaxDim;
+    }
+  }
+
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = targetW;
+  tempCanvas.height = targetH;
+  const tempCtx = tempCanvas.getContext('2d');
+  const frames = [];
+
+  const prevTime = currentTime;
+  for (let i = 0; i < totalFrames; i++) {
+    currentTime = i * stepTime;
+    timeSeeker.value = currentTime;
+    currentTimeDisplay.textContent = formatTime(currentTime);
+    syncVideosToTime();
+    renderFrame();
+
+    tempCtx.drawImage(canvas, 0, 0, targetW, targetH);
+    frames.push(tempCanvas.toDataURL('image/jpeg', 0.8));
+
+    if (i % 4 === 0 || i === totalFrames - 1) {
+      recordStatus.textContent = `GIFフレーム抽出中 (${i + 1} / ${totalFrames})...`;
+      await new Promise(r => setTimeout(r, 10));
+    }
+  }
+
+  currentTime = prevTime;
+  timeSeeker.value = currentTime;
+  currentTimeDisplay.textContent = formatTime(currentTime);
+  syncVideosToTime();
+  renderFrame();
+
+  recordStatus.textContent = 'GIFエンコード中 (少々お待ちください)...';
+
+  if (typeof gifshot !== 'undefined') {
+    gifshot.createGIF({
+      images: frames,
+      gifWidth: targetW,
+      gifHeight: targetH,
+      interval: stepTime,
+      numWorkers: 2,
+      progressCallback: (p) => {
+        recordStatus.textContent = `GIFエンコード中: ${Math.round(p * 100)}%`;
+      }
+    }, (obj) => {
+      isExportingGif = false;
+      if (recordBtn) recordBtn.disabled = false;
+      updateExportUIState();
+
+      if (obj.error) {
+        alert("GIF生成に失敗しました: " + obj.error);
+        recordStatus.textContent = '';
+        return;
+      }
+      const blob = dataURLtoBlob(obj.image);
+      handleExportDone(blob, 'gif');
+    });
+  } else {
+    alert("GIFライブラリが読み込まれていません。");
+    isExportingGif = false;
+    if (recordBtn) recordBtn.disabled = false;
+    updateExportUIState();
+  }
+}
+
+function exportStaticImage(ext) {
+  if (layers.length === 0) {
+    alert("素材を1つ以上追加してください。");
+    return;
+  }
+  renderFrame();
+  const mime = ext === 'png' ? 'image/png' : 'image/jpeg';
+  canvas.toBlob((blob) => {
+    if (!blob) {
+      alert("画像の書き出しに失敗しました。");
+      return;
+    }
+    handleExportDone(blob, ext);
+  }, mime, 0.95);
+}
+
+function handleExportDone(blob, ext) {
+  const mimeType = blob.type || (ext === 'mp4' ? 'video/mp4' : (ext === 'gif' ? 'image/gif' : (ext === 'png' ? 'image/png' : (ext === 'jpg' ? 'image/jpeg' : 'video/webm'))));
+  const filename = `video_export_${Date.now()}.${ext}`;
+  const file = new File([blob], filename, { type: mimeType });
+  lastExportedFile = file;
+  lastExportedBlob = blob;
+  lastExportedUrl = URL.createObjectURL(blob);
+
+  // 通常ダウンロード (PC/ブラウザ)
+  const a = document.createElement('a');
+  a.href = lastExportedUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+  }, 250);
+
+  recordStatus.innerHTML = `<span style="color:#00ffaa;font-weight:bold;">✅ 保存完了！</span> (${ext.toUpperCase()} 形式で保存されました)`;
+
+  // iPhone / スマホ用 カメラロール保存エリアを表示
+  if (shareActionArea) {
+    shareActionArea.style.display = 'flex';
+    if (saveToPhotosBtn) {
+      if (ext === 'png' || ext === 'jpg' || ext === 'gif') {
+        saveToPhotosBtn.textContent = '📱 カメラロール（写真）に保存 / 共有';
+      } else {
+        saveToPhotosBtn.textContent = '📱 iPhoneカメラロールに保存 (共有)';
+      }
+    }
+    if (imagePreviewArea) {
+      if (ext === 'png' || ext === 'jpg' || ext === 'gif') {
+        imagePreviewArea.innerHTML = `<img src="${lastExportedUrl}" style="max-width:100%; max-height:160px; border-radius:6px; margin-top:6px; border:1px solid #444;" alt="プレビュー" /><div style="font-size:0.72rem; color:#8da4c4; margin-top:4px;">※iPhoneは画像を長押しして「写真に追加」も可能です</div>`;
+        imagePreviewArea.style.display = 'block';
+      } else {
+        imagePreviewArea.style.display = 'none';
+        imagePreviewArea.innerHTML = '';
+      }
+    }
+  }
+
+  updateExportUIState();
+}
+
+function updateExportUIState() {
+  const selectedFormat = formatSelect ? formatSelect.value : 'mp4';
+
+  if (modeTabs) {
+    modeTabs.forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.mode === currentExportMode);
+    });
+  }
+
+  // 静止画形式の場合
+  if (selectedFormat === 'png' || selectedFormat === 'jpg') {
+    if (modeControlArea) modeControlArea.style.display = 'none';
+    if (durationSettingRow) durationSettingRow.style.display = 'none';
+    if (recordBtn) {
+      recordBtn.textContent = `📷 静止画を保存 (.${selectedFormat})`;
+      recordBtn.classList.remove('recording');
+      recordBtn.disabled = false;
+    }
+    return;
+  }
+
+  // 動画・GIFの場合
+  if (modeControlArea) modeControlArea.style.display = 'block';
+
+  if (currentExportMode === 'manual') {
+    if (durationSettingRow) durationSettingRow.style.display = 'none';
+  } else {
+    if (durationSettingRow) durationSettingRow.style.display = 'block';
+  }
+
+  if (recordBtn) {
+    if (isRecording) {
+      recordBtn.textContent = `⏹️ 録画停止 (保存)`;
+      recordBtn.classList.add('recording');
+      recordBtn.disabled = false;
+    } else {
+      recordBtn.classList.remove('recording');
+      if (selectedFormat === 'gif') {
+        if (currentExportMode === 'instant') {
+          recordBtn.textContent = '⚡ GIFをその場で保存 (.gif)';
+        } else if (currentExportMode === 'timer') {
+          recordBtn.textContent = '⏱️ 指定秒数でGIF録画 (.gif)';
+        } else {
+          recordBtn.textContent = '🔴 GIF録画開始 (.gif)';
+        }
+      } else {
+        const extUpper = selectedFormat.toUpperCase();
+        if (currentExportMode === 'instant') {
+          recordBtn.textContent = `⚡ その場で保存 (${extUpper})`;
+        } else if (currentExportMode === 'timer') {
+          recordBtn.textContent = `⏱️ 指定秒数で録画開始 (${extUpper})`;
+        } else {
+          recordBtn.textContent = `🔴 録画開始 (${extUpper})`;
+        }
+      }
+    }
+  }
+}
+
+function setExportMode(mode) {
+  currentExportMode = mode;
+  updateExportUIState();
+  triggerAutoSave();
+}
+
+if (modeTabs) {
+  modeTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      if (isRecording) return;
+      setExportMode(tab.dataset.mode);
+    });
+  });
+}
+
+if (formatSelect) {
+  formatSelect.addEventListener('change', () => {
+    updateExportUIState();
+    triggerAutoSave();
+  });
+}
+
+if (useTimelineMaxBtn && exportDurationInput) {
+  useTimelineMaxBtn.addEventListener('click', () => {
+    const val = Math.max(1, Math.min(180, Math.round(maxDuration * 10) / 10));
+    exportDurationInput.value = val;
+    exportTargetDuration = val;
+    triggerAutoSave();
+  });
+}
+
+if (exportDurationInput) {
+  exportDurationInput.addEventListener('change', () => {
+    exportTargetDuration = parseFloat(exportDurationInput.value) || 5;
+    triggerAutoSave();
+  });
+}
+
+if (recordBtn) {
+  recordBtn.addEventListener('click', () => {
+    if (!isRecording) {
+      startExport();
+    } else {
+      stopExport();
+    }
+  });
+}
 
 function startExport() {
   if (layers.length === 0) {
@@ -666,15 +1066,50 @@ function startExport() {
     return;
   }
 
+  const selectedFormat = formatSelect ? formatSelect.value : 'mp4';
+
+  // 静止画の場合
+  if (selectedFormat === 'png' || selectedFormat === 'jpg') {
+    exportStaticImage(selectedFormat);
+    return;
+  }
+
+  const dur = parseFloat(exportDurationInput ? exportDurationInput.value : 5) || 5;
+
+  // GIFアニメーションの場合
+  if (selectedFormat === 'gif') {
+    if (currentExportMode === 'instant') {
+      exportInstantGif(dur);
+      return;
+    }
+    // timer または manual モード
+    isRecording = true;
+    isRecordingGif = true;
+    gifRecordedFrames = [];
+    gifTempCanvas = null;
+    recordedSeconds = 0;
+    exportTargetDuration = dur;
+    activeRecordingExt = 'gif';
+    lastGifCaptureTime = performance.now();
+    captureGifFrame();
+
+    currentTime = 0;
+    timeSeeker.value = 0;
+    currentTimeDisplay.textContent = formatTime(0);
+    syncVideosToTime();
+
+    updateExportUIState();
+    if (!isPlaying) playBtn.click();
+    return;
+  }
+
+  // 動画形式 (mp4, webm, mkv)
   currentTime = 0;
   timeSeeker.value = 0;
   currentTimeDisplay.textContent = formatTime(0);
   syncVideosToTime();
 
   const stream = canvas.captureStream(30);
-  
-  // 選択された形式（MP4 または WebM）に基づいて MIMEタイプと拡張子を決定
-  const selectedFormat = formatSelect ? formatSelect.value : 'mp4';
   let mimeType = '';
   let ext = selectedFormat;
 
@@ -684,13 +1119,23 @@ function startExport() {
     } else if (MediaRecorder.isTypeSupported('video/mp4')) {
       mimeType = 'video/mp4';
     } else {
-      // MP4非対応ブラウザ時のフォールバック
       mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
         ? 'video/webm;codecs=vp9'
         : (MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : '');
       ext = 'webm';
-      alert('お使いの環境（ブラウザ）はMP4形式の直接書き出しに対応していないため、WebM形式で保存します。');
+      alert('お使いの環境はMP4形式の直接書き出しに対応していないため、WebM形式で保存します。');
     }
+  } else if (selectedFormat === 'mkv') {
+    if (MediaRecorder.isTypeSupported('video/x-matroska;codecs=avc1')) {
+      mimeType = 'video/x-matroska;codecs=avc1';
+    } else if (MediaRecorder.isTypeSupported('video/x-matroska')) {
+      mimeType = 'video/x-matroska';
+    } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+      mimeType = 'video/webm;codecs=vp9';
+    } else {
+      mimeType = 'video/webm';
+    }
+    ext = 'mkv';
   } else {
     // webm
     if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
@@ -700,7 +1145,6 @@ function startExport() {
     } else if (MediaRecorder.isTypeSupported('video/webm')) {
       mimeType = 'video/webm';
     } else if (MediaRecorder.isTypeSupported('video/mp4')) {
-      // フォールバック (iOS Safari等)
       mimeType = 'video/mp4';
       ext = 'mp4';
       alert('お使いの環境はWebM形式に対応していないため、MP4形式で保存します。');
@@ -708,8 +1152,8 @@ function startExport() {
   }
 
   let options = mimeType ? { mimeType } : {};
-
   recordedChunks = [];
+
   try {
     mediaRecorder = new MediaRecorder(stream, options);
   } catch (e) {
@@ -723,25 +1167,17 @@ function startExport() {
 
   mediaRecorder.onstop = () => {
     const blob = new Blob(recordedChunks, { type: mimeType || 'video/webm' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `video_export_${Date.now()}.${ext}`;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 200);
-
-    recordStatus.textContent = `保存完了！(${ext.toUpperCase()} 形式でダウンロードされました)`;
-    setTimeout(() => { recordStatus.textContent = ''; }, 3500);
+    handleExportDone(blob, ext);
   };
 
   mediaRecorder.start();
   isRecording = true;
-  recordBtn.textContent = '録画停止 (保存)';
-  recordStatus.textContent = `● タイムラインを録画・書き出し中 (${ext.toUpperCase()})...`;
+  isRecordingGif = false;
+  recordedSeconds = 0;
+  activeRecordingExt = ext;
+  exportTargetDuration = dur;
+
+  updateExportUIState();
 
   if (!isPlaying) {
     playBtn.click();
@@ -749,12 +1185,100 @@ function startExport() {
 }
 
 function stopExport() {
+  if (isRecordingGif) {
+    processRecordedGif();
+    return;
+  }
+
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
   }
   isRecording = false;
-  recordBtn.textContent = '動画を録画・保存';
+  updateExportUIState();
   recordStatus.textContent = 'ファイルを生成中...';
+}
+
+// iPhone / スマホ用 カメラロール保存 (Web Share API)
+if (saveToPhotosBtn) {
+  saveToPhotosBtn.addEventListener('click', async () => {
+    if (!lastExportedFile) {
+      alert('保存されたファイルがありません。先に動画または画像を書き出してください。');
+      return;
+    }
+
+    const ext = lastExportedFile.name.split('.').pop().toLowerCase();
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    if (isIOS && (ext === 'webm' || ext === 'mkv')) {
+      alert('【ご注意】\niPhoneの写真アプリ（カメラロール）は WebM / MKV 形式に対応していません。\nカメラロールに直接保存したい場合は、保存形式で「MP4」を選択して書き出してください。');
+      return;
+    }
+
+    if (navigator.canShare && navigator.canShare({ files: [lastExportedFile] })) {
+      try {
+        await navigator.share({
+          files: [lastExportedFile],
+          title: '編集動画の保存',
+          text: 'Multi-Track Chroma Video Editorから保存'
+        });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('共有エラー:', err);
+        }
+      }
+    } else if (navigator.share) {
+      try {
+        await navigator.share({
+          title: '編集動画の保存',
+          url: lastExportedUrl
+        });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('共有エラー:', err);
+        }
+      }
+    } else {
+      alert('お使いの環境は共有API（カメラロール直接保存）に対応していません。ダウンロードされたファイルをご利用ください。');
+    }
+  });
+}
+
+// PC / スマホ レイアウト切り替え機能
+const LAYOUT_STORAGE_KEY = 'chroma_editor_layout_mode';
+
+function setLayoutMode(mode, save = true) {
+  document.body.classList.remove('force-pc', 'force-mobile');
+  if (mode === 'pc') {
+    document.body.classList.add('force-pc');
+  } else if (mode === 'mobile') {
+    document.body.classList.add('force-mobile');
+  }
+
+  if (modeAutoBtn) modeAutoBtn.classList.toggle('active', mode === 'auto');
+  if (modePcBtn) modePcBtn.classList.toggle('active', mode === 'pc');
+  if (modeMobileBtn) modeMobileBtn.classList.toggle('active', mode === 'mobile');
+
+  if (save) {
+    try {
+      localStorage.setItem(LAYOUT_STORAGE_KEY, mode);
+    } catch (e) {}
+  }
+}
+
+function initLayoutMode() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlMode = urlParams.get('mode');
+
+  if (urlMode === 'pc' || urlMode === 'mobile') {
+    setLayoutMode(urlMode, true);
+  } else {
+    const saved = localStorage.getItem(LAYOUT_STORAGE_KEY) || 'auto';
+    setLayoutMode(saved, false);
+  }
+
+  if (modeAutoBtn) modeAutoBtn.addEventListener('click', () => setLayoutMode('auto'));
+  if (modePcBtn) modePcBtn.addEventListener('click', () => setLayoutMode('pc'));
+  if (modeMobileBtn) modeMobileBtn.addEventListener('click', () => setLayoutMode('mobile'));
 }
 
 // ========================================================
@@ -815,30 +1339,49 @@ if (resetProjectBtn) {
 }
 
 function initFormatSelect() {
-  if (!formatSelect || typeof MediaRecorder === 'undefined') return;
+  if (!formatSelect) return;
 
   const mp4Option = formatSelect.querySelector('option[value="mp4"]');
   const webmOption = formatSelect.querySelector('option[value="webm"]');
+  const mkvOption = formatSelect.querySelector('option[value="mkv"]');
+  const gifOption = formatSelect.querySelector('option[value="gif"]');
+  const pngOption = formatSelect.querySelector('option[value="png"]');
+  const jpgOption = formatSelect.querySelector('option[value="jpg"]');
 
-  const mp4Supported = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1') || MediaRecorder.isTypeSupported('video/mp4');
-  const webmSupported = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') || MediaRecorder.isTypeSupported('video/webm');
+  const hasMediaRecorder = typeof MediaRecorder !== 'undefined';
+  const mp4Supported = hasMediaRecorder && (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1') || MediaRecorder.isTypeSupported('video/mp4'));
+  const webmSupported = hasMediaRecorder && (MediaRecorder.isTypeSupported('video/webm;codecs=vp9') || MediaRecorder.isTypeSupported('video/webm'));
 
   if (mp4Option) {
     if (!mp4Supported) {
-      mp4Option.textContent = 'MP4 (.mp4) ※非対応環境';
-      mp4Option.disabled = true;
+      mp4Option.textContent = 'MP4 (.mp4) ※一部環境非対応';
     } else {
-      mp4Option.textContent = 'MP4 (.mp4)';
+      mp4Option.textContent = 'MP4 (.mp4) - 動画';
     }
   }
 
   if (webmOption) {
     if (!webmSupported) {
-      webmOption.textContent = 'WebM (.webm) ※非対応環境';
-      webmOption.disabled = true;
+      webmOption.textContent = 'WebM (.webm) ※一部環境非対応';
     } else {
-      webmOption.textContent = 'WebM (.webm)';
+      webmOption.textContent = 'WebM (.webm) - 高圧縮動画';
     }
+  }
+
+  if (mkvOption) {
+    mkvOption.textContent = 'MKV (.mkv) - 高画質動画';
+  }
+
+  if (gifOption) {
+    gifOption.textContent = 'GIF (.gif) - アニメーション';
+  }
+
+  if (pngOption) {
+    pngOption.textContent = 'PNG (.png) - 静止画';
+  }
+
+  if (jpgOption) {
+    jpgOption.textContent = 'JPG (.jpg) - 静止画';
   }
 
   if (mp4Supported) {
@@ -849,8 +1392,9 @@ function initFormatSelect() {
 }
 
 // ========================================================
-// 起動時の初期化 (自動保存データがあれば復元)
+// 起動時の初期化 (自動保存データ復元 ＆ レイアウト・UI設定)
 // ========================================================
+initLayoutMode();
 initFormatSelect();
 try {
   const savedStr = localStorage.getItem(STORAGE_KEY);
@@ -866,3 +1410,4 @@ try {
   updateTimelineBounds();
   renderFrame();
 }
+updateExportUIState();

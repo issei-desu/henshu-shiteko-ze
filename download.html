@@ -205,16 +205,26 @@
     </header>
 
     <div class="grid">
-      <!-- 1. Web版 (ブラウザ / iPhone / iPad) -->
+      <!-- 1. Web版 (ブラウザ / iPhone / iPad / PC) -->
       <div class="card">
         <div class="card-icon">🌐</div>
-        <h2 class="card-title">Web版 (ブラウザ / iPhone)</h2>
-        <p class="card-desc">インストール不要。ブラウザで今すぐ編集を開始できます。iPhone / iPad / PCすべてに対応。</p>
-        <a href="index.html" class="card-button btn-primary">Web版を今すぐ開く ▶</a>
+        <h2 class="card-title">Web版 (ブラウザ / iPhone / PC)</h2>
+        <p class="card-desc">インストール不要。ブラウザで今すぐ編集を開始できます。お使いの端末に合わせてレイアウトを選べます。</p>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;">
+          <a href="index.html?mode=pc" class="card-button btn-primary" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+            💻 PC用レイアウトで開く ▶
+          </a>
+          <a href="index.html?mode=mobile" class="card-button" style="display: flex; align-items: center; justify-content: center; gap: 6px; background: #262c3e; border: 1px solid #455073; color: #ffffff;">
+            📱 スマホ用レイアウトで開く ▶
+          </a>
+          <a href="index.html" style="text-align: center; font-size: 0.8rem; color: #8da4c4; text-decoration: underline; margin-top: 2px;">
+            画面幅に合わせて自動判定で開く
+          </a>
+        </div>
         <div class="instructions">
           <strong>📱 iPhoneでのアプリ化手順:</strong>
           <ol>
-            <li>Safariで上記ボタンから開く</li>
+            <li>Safariで「スマホ用レイアウト」を開く</li>
             <li>画面下の共有アイコン（↑）をタップ</li>
             <li><strong>「ホーム画面に追加」</strong> を選択</li>
           </ol>
@@ -276,8 +286,8 @@
           編集操作をリアルタイムに自動保存。再読み込みや誤って閉じても即座に作業復元。
         </div>
         <div class="feature-item">
-          <strong>🎥 動画録画・保存</strong>
-          プレビュー内容をWebMまたはMP4でそのまま高画質エクスポート。
+          <strong>🎥 多彩な保存形式 ＆ 3つの保存方法</strong>
+          MP4 / WebM / MKV / GIFアニメ / 静止画 (PNG/JPG) に対応。「その場で保存」「秒数指定録画」「自由録画」から選べ、iPhoneのカメラロール直接保存（共有シート連携）もワンタップで可能。
         </div>
       </div>
     </div>
