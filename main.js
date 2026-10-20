@@ -9,7 +9,8 @@ const formatSelect = document.getElementById('formatSelect');
 
 const modeControlArea = document.getElementById('modeControlArea');
 const durationSettingRow = document.getElementById('durationSettingRow');
-const exportDurationInput = document.getElementById('exportDurationInput');
+const exportStartInput = document.getElementById('exportStartInput');
+const exportEndInput = document.getElementById('exportEndInput');
 const useTimelineMaxBtn = document.getElementById('useTimelineMaxBtn');
 const shareActionArea = document.getElementById('shareActionArea');
 const saveToPhotosBtn = document.getElementById('saveToPhotosBtn');
@@ -175,7 +176,8 @@ function getProjectData() {
     aspectRatio: aspectSelect.value,
     exportFormat: formatSelect ? formatSelect.value : 'mp4',
     exportMode: currentExportMode,
-    exportDuration: exportDurationInput ? parseFloat(exportDurationInput.value) || 5 : 5,
+    exportStartTime: exportStartInput ? parseFloat(exportStartInput.value) || 0 : 0,
+    exportEndTime: exportEndInput ? parseFloat(exportEndInput.value) || 5 : 5,
     layers: layers.map(l => {
       const base = {
         id: l.id,
@@ -243,9 +245,13 @@ async function loadProject(project) {
     setExportMode(project.exportMode);
   }
 
-  if (project.exportDuration && exportDurationInput) {
-    exportDurationInput.value = project.exportDuration;
-    exportTargetDuration = project.exportDuration;
+  if (project.exportStartTime !== undefined && exportStartInput) {
+    exportStartInput.value = project.exportStartTime;
+  }
+  if (project.exportEndTime !== undefined && exportEndInput) {
+    exportEndInput.value = project.exportEndTime;
+  } else if (project.exportDuration && exportEndInput) {
+    exportEndInput.value = project.exportDuration;
   }
 
   // まずベースオブジェクトを作成（IndexedDBからの読み込み状態を保持）
@@ -983,7 +989,112 @@ function processRecordedGif() {
   }
 }
 
-async function exportInstantGif(targetDuration) {
+// 動画・高速一括レンダリング (実時間待たずに開始秒〜終了秒を一括生成)
+let isInstantRendering = false;
+
+async function exportInstantVideo(startTime, endTime, ext, mimeType) {
+  if (layers.length === 0) {
+    alert("素材を1つ以上追加してください。");
+    return;
+  }
+
+  const duration = Math.max(0.1, endTime - startTime);
+  const fps = 30;
+  const totalFrames = Math.max(1, Math.round(duration * fps));
+  const stepTime = 1 / fps;
+
+  isInstantRendering = true;
+  if (recordBtn) {
+    recordBtn.disabled = true;
+    recordBtn.textContent = '⚡ レンダリング中...';
+  }
+
+  // 元の再生状態・時間を退避
+  const wasPlaying = isPlaying;
+  if (isPlaying) {
+    isPlaying = false;
+    if (playBtn) playBtn.textContent = '▶ 再生';
+  }
+  const savedCurrentTime = currentTime;
+
+  // MediaRecorder でストリームをキャプチャ
+  const stream = canvas.captureStream(fps);
+  let options = mimeType ? { mimeType } : {};
+  let chunks = [];
+  let recorder;
+
+  try {
+    recorder = new MediaRecorder(stream, options);
+  } catch (err) {
+    alert("書き出しの初期化に失敗しました: " + (err.message || err));
+    isInstantRendering = false;
+    if (recordBtn) recordBtn.disabled = false;
+    updateExportUIState();
+    return;
+  }
+
+  recorder.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) chunks.push(e.data);
+  };
+
+  const exportPromise = new Promise((resolve) => {
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: mimeType || 'video/webm' });
+      resolve(blob);
+    };
+  });
+
+  recorder.start();
+
+  // フレームごとの高速一括レンダリング
+  for (let i = 0; i < totalFrames; i++) {
+    currentTime = startTime + i * stepTime;
+    timeSeeker.value = currentTime;
+    currentTimeDisplay.textContent = formatTime(currentTime);
+
+    // ビデオ素材のシーク同期
+    layers.forEach(l => {
+      if (l.type === 'video' && l.ready && l.element) {
+        if (currentTime >= l.startTime && currentTime <= l.endTime) {
+          const d = l.element.duration || 1;
+          const off = (currentTime - l.startTime) % d;
+          l.element.currentTime = off;
+        }
+      }
+    });
+
+    renderFrame();
+
+    const progress = Math.min(100, Math.round(((i + 1) / totalFrames) * 100));
+    recordStatus.innerHTML = `<span>⚡ 高速保存中 (${ext.toUpperCase()}): <strong>${(i * stepTime).toFixed(1)}s / ${duration.toFixed(1)}s (${progress}%)</strong></span>`;
+
+    // captureStream にフレームを確実に送るための微小ウェイト
+    if (i % 2 === 0 || i === totalFrames - 1) {
+      await new Promise(r => setTimeout(r, 16));
+    }
+  }
+
+  recordStatus.textContent = 'ファイルを生成中...';
+  await new Promise(r => setTimeout(r, 100));
+  recorder.stop();
+
+  const finalBlob = await exportPromise;
+
+  // タイムラインを元の位置に復元
+  currentTime = savedCurrentTime;
+  timeSeeker.value = currentTime;
+  currentTimeDisplay.textContent = formatTime(currentTime);
+  syncVideosToTime();
+  renderFrame();
+
+  isInstantRendering = false;
+  if (recordBtn) recordBtn.disabled = false;
+  updateExportUIState();
+
+  handleExportDone(finalBlob, ext);
+}
+
+async function exportInstantGif(startTime, endTime) {
   if (layers.length === 0) {
     alert("素材を1つ以上追加してください。");
     return;
@@ -994,8 +1105,8 @@ async function exportInstantGif(targetDuration) {
     recordBtn.textContent = '⌛ フレーム抽出中...';
   }
 
+  const duration = Math.max(0.2, endTime - startTime);
   const fps = 10;
-  const duration = Math.max(0.5, Math.min(targetDuration, maxDuration || 10));
   const totalFrames = Math.max(1, Math.round(duration * fps));
   const stepTime = duration / totalFrames;
 
@@ -1004,7 +1115,7 @@ async function exportInstantGif(targetDuration) {
   if (targetW > gifMaxDim || targetH > gifMaxDim) {
     if (targetW >= targetH) {
       targetH = Math.round((targetH * gifMaxDim) / targetW);
-      targetW = maxDim;
+      targetW = gifMaxDim;
     } else {
       targetW = Math.round((targetW * gifMaxDim) / targetH);
       targetH = gifMaxDim;
@@ -1019,17 +1130,28 @@ async function exportInstantGif(targetDuration) {
 
   const prevTime = currentTime;
   for (let i = 0; i < totalFrames; i++) {
-    currentTime = i * stepTime;
+    currentTime = startTime + i * stepTime;
     timeSeeker.value = currentTime;
     currentTimeDisplay.textContent = formatTime(currentTime);
-    syncVideosToTime();
+
+    layers.forEach(l => {
+      if (l.type === 'video' && l.ready && l.element) {
+        if (currentTime >= l.startTime && currentTime <= l.endTime) {
+          const d = l.element.duration || 1;
+          const off = (currentTime - l.startTime) % d;
+          l.element.currentTime = off;
+        }
+      }
+    });
+
     renderFrame();
 
     tempCtx.drawImage(canvas, 0, 0, targetW, targetH);
     frames.push(tempCanvas.toDataURL('image/jpeg', 0.8));
 
     if (i % 4 === 0 || i === totalFrames - 1) {
-      recordStatus.textContent = `GIFフレーム抽出中 (${i + 1} / ${totalFrames})...`;
+      const progress = Math.min(100, Math.round(((i + 1) / totalFrames) * 100));
+      recordStatus.innerHTML = `<span>⚡ GIFフレーム抽出中: <strong>${(i * stepTime).toFixed(1)}s / ${duration.toFixed(1)}s (${progress}%)</strong></span>`;
       await new Promise(r => setTimeout(r, 10));
     }
   }
@@ -1224,18 +1346,24 @@ if (formatSelect) {
   });
 }
 
-if (useTimelineMaxBtn && exportDurationInput) {
+if (useTimelineMaxBtn) {
   useTimelineMaxBtn.addEventListener('click', () => {
-    const val = Math.max(1, Math.min(180, Math.round(maxDuration * 10) / 10));
-    exportDurationInput.value = val;
-    exportTargetDuration = val;
+    if (exportStartInput) exportStartInput.value = 0;
+    if (exportEndInput) {
+      exportEndInput.value = parseFloat(maxDuration.toFixed(1));
+    }
     triggerAutoSave();
   });
 }
 
-if (exportDurationInput) {
-  exportDurationInput.addEventListener('change', () => {
-    exportTargetDuration = parseFloat(exportDurationInput.value) || 5;
+if (exportStartInput) {
+  exportStartInput.addEventListener('change', () => {
+    triggerAutoSave();
+  });
+}
+
+if (exportEndInput) {
+  exportEndInput.addEventListener('change', () => {
     triggerAutoSave();
   });
 }
@@ -1291,12 +1419,15 @@ function startExport() {
     return;
   }
 
-  const dur = parseFloat(exportDurationInput ? exportDurationInput.value : 5) || 5;
+  const sTime = Math.max(0, parseFloat(exportStartInput ? exportStartInput.value : 0) || 0);
+  let eTime = parseFloat(exportEndInput ? exportEndInput.value : 5) || 5;
+  if (eTime <= sTime) eTime = sTime + 1;
+  const dur = eTime - sTime;
 
   // GIFアニメーションの場合
   if (selectedFormat === 'gif') {
     if (currentExportMode === 'instant') {
-      exportInstantGif(dur);
+      exportInstantGif(sTime, eTime);
       return;
     }
     // timer または manual モード
@@ -1310,9 +1441,9 @@ function startExport() {
     lastGifCaptureTime = performance.now();
     captureGifFrame();
 
-    currentTime = 0;
-    timeSeeker.value = 0;
-    currentTimeDisplay.textContent = formatTime(0);
+    currentTime = sTime;
+    timeSeeker.value = sTime;
+    currentTimeDisplay.textContent = formatTime(sTime);
     syncVideosToTime();
 
     updateExportUIState();
@@ -1321,12 +1452,6 @@ function startExport() {
   }
 
   // 動画形式 (mp4, webm, mkv)
-  currentTime = 0;
-  timeSeeker.value = 0;
-  currentTimeDisplay.textContent = formatTime(0);
-  syncVideosToTime();
-
-  const stream = canvas.captureStream(30);
   let mimeType = '';
   let ext = selectedFormat;
 
@@ -1367,6 +1492,20 @@ function startExport() {
       alert('お使いの環境はWebM形式に対応していないため、MP4形式で保存します。');
     }
   }
+
+  // 「⚡ その場で保存」モードなら、等速再生の録画ではなく高速一括レンダリングを実行！
+  if (currentExportMode === 'instant') {
+    exportInstantVideo(sTime, eTime, ext, mimeType);
+    return;
+  }
+
+  // 録画モード (timer / manual) の場合
+  currentTime = sTime;
+  timeSeeker.value = sTime;
+  currentTimeDisplay.textContent = formatTime(sTime);
+  syncVideosToTime();
+
+  const stream = canvas.captureStream(30);
 
   let options = mimeType ? { mimeType } : {};
   recordedChunks = [];

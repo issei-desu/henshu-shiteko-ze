@@ -5,7 +5,7 @@
   <title>Multi-Track Chroma Video Editor</title>
   <meta name="theme-color" content="#1a1a22" />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=20261020_02" />
+  <link rel="stylesheet" href="style.css?v=20261020_03" />
 </head>
 <body>
   <div class="app-container">
@@ -100,13 +100,24 @@
             </div>
           </div>
 
-          <!-- 秒数指定行（instant または timer モードで表示） -->
+          <!-- 秒数範囲指定行（開始秒・終了秒・全体尺ボタン） -->
           <div class="export-duration-row" id="durationSettingRow">
-            <label for="exportDurationInput">保存秒数:</label>
-            <div class="duration-input-wrap">
-              <input type="number" id="exportDurationInput" min="0.1" max="180" step="0.5" value="5" />
-              <span class="unit">秒</span>
-              <button type="button" id="useTimelineMaxBtn" class="btn btn-xs" title="素材全体の長さに合わせる">全体尺</button>
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+              <label>保存する区間 (開始〜終了秒):</label>
+              <button type="button" id="useTimelineMaxBtn" class="btn btn-xs" title="素材全体の長さに合わせる">全体尺に合わせる</button>
+            </div>
+            <div class="duration-range-wrap">
+              <div class="range-field">
+                <span class="range-sublabel">開始:</span>
+                <input type="number" id="exportStartInput" min="0" max="3600" step="0.1" value="0" />
+                <span class="unit">秒</span>
+              </div>
+              <span class="range-sep">〜</span>
+              <div class="range-field">
+                <span class="range-sublabel">終了:</span>
+                <input type="number" id="exportEndInput" min="0.1" max="3600" step="0.1" value="5" />
+                <span class="unit">秒</span>
+              </div>
             </div>
           </div>
         </div>
@@ -146,13 +157,13 @@
           <button id="modeMobileBtn" type="button" class="btn layout-btn" title="スマホレイアウトで固定">📱 スマホ</button>
         </div>
         <a href="download.html" class="download-guide-link">📥 アプリ版ダウンロード案内</a>
-        <span class="build-timestamp">最終更新: 2026/10/20 16:33</span>
+        <span class="build-timestamp">最終更新: 2026/10/20 16:42</span>
       </div>
     </main>
   </div>
 
   <script src="gifshot.min.js"></script>
-  <script src="main.js?v=20261020_02"></script>
+  <script src="main.js?v=20261020_03"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(console.error);
