@@ -214,7 +214,7 @@ function triggerAutoSave() {
       const data = getProjectData();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       if (saveBadge) {
-        saveBadge.textContent = '⚡ 保存完了 (動画・設定)';
+        saveBadge.textContent = '保存完了 (動画・設定)';
         saveBadge.style.color = '#4ade80';
       }
     } catch (e) {
@@ -486,15 +486,15 @@ function renderAllLayerCards() {
       if (layer.isLoadingMedia) {
         relinkHTML = `
           <div class="relink-alert" style="background:#1d2a3a; border-color:#2a4a75;">
-            <span class="relink-text" style="color:#7bb5ff;">⌛ ブラウザ内ストレージから素材を復元中... (${layer.name})</span>
+            <span class="relink-text" style="color:#7bb5ff;">ブラウザ内ストレージから素材を復元中... (${layer.name})</span>
           </div>
         `;
       } else if (layer.needsRelink && !layer.ready) {
         relinkHTML = `
           <div class="relink-alert">
-            <span class="relink-text">⚠️ 素材ファイルの再読み込みが必要です（${layer.name}）</span>
+            <span class="relink-text">素材ファイルの再読み込みが必要です（${layer.name}）</span>
             <label class="btn white-btn relink-btn">
-              📁 同じ（または新しい）ファイルを選択
+              同じ（または新しい）ファイルを選択
               <input type="file" class="relink-input" accept="${layer.type === 'video' ? 'video/*' : 'image/*'}" hidden />
             </label>
             <div style="font-size:0.75rem; color:#8da4c4; margin-top:4px;">※一度選択すると次回以降は自動で記憶・復元されます</div>
@@ -735,7 +735,7 @@ function renderAllLayerCards() {
 // 再生 / 一時停止
 playBtn.addEventListener('click', () => {
   isPlaying = !isPlaying;
-  playBtn.textContent = isPlaying ? '⏸ 一時停止' : '▶ 再生';
+  playBtn.textContent = isPlaying ? '一時停止' : '再生';
   if (isPlaying) {
     lastTimestamp = performance.now();
     requestAnimationFrame(animationLoop);
@@ -802,15 +802,15 @@ function animationLoop(timestamp) {
 
     if (currentExportMode === 'instant' || currentExportMode === 'timer') {
       const progress = Math.min(100, Math.round((recordedSeconds / exportTargetDuration) * 100));
-      const modeLabel = currentExportMode === 'instant' ? '⚡ 高速書き出し中' : '⏱️ 指定秒数録画中';
-      recordStatus.innerHTML = `<span>● ${modeLabel} (${activeRecordingExt.toUpperCase()}): <strong>${recordedSeconds.toFixed(1)}s / ${exportTargetDuration.toFixed(1)}s (${progress}%)</strong></span>`;
+      const modeLabel = currentExportMode === 'instant' ? '高速書き出し中' : '指定秒数録画中';
+      recordStatus.innerHTML = `<span>${modeLabel} (${activeRecordingExt.toUpperCase()}): <strong>${recordedSeconds.toFixed(1)}s / ${exportTargetDuration.toFixed(1)}s (${progress}%)</strong></span>`;
 
       if (recordedSeconds >= exportTargetDuration) {
         stopExport();
         return;
       }
     } else {
-      recordStatus.innerHTML = `<span>● 自由録画中 (${activeRecordingExt.toUpperCase()}): <strong>${recordedSeconds.toFixed(1)}秒 経過</strong> [停止ボタンで保存]</span>`;
+      recordStatus.innerHTML = `<span>自由録画中 (${activeRecordingExt.toUpperCase()}): <strong>${recordedSeconds.toFixed(1)}秒 経過</strong> [停止ボタンで保存]</span>`;
     }
   }
 
@@ -1006,14 +1006,14 @@ async function exportInstantVideo(startTime, endTime, ext, mimeType) {
   isInstantRendering = true;
   if (recordBtn) {
     recordBtn.disabled = true;
-    recordBtn.textContent = '⚡ レンダリング中...';
+    recordBtn.textContent = 'レンダリング中...';
   }
 
   // 元の再生状態・時間を退避
   const wasPlaying = isPlaying;
   if (isPlaying) {
     isPlaying = false;
-    if (playBtn) playBtn.textContent = '▶ 再生';
+    if (playBtn) playBtn.textContent = '再生';
   }
   const savedCurrentTime = currentTime;
 
@@ -1066,7 +1066,7 @@ async function exportInstantVideo(startTime, endTime, ext, mimeType) {
     renderFrame();
 
     const progress = Math.min(100, Math.round(((i + 1) / totalFrames) * 100));
-    recordStatus.innerHTML = `<span>⚡ 高速保存中 (${ext.toUpperCase()}): <strong>${(i * stepTime).toFixed(1)}s / ${duration.toFixed(1)}s (${progress}%)</strong></span>`;
+    recordStatus.innerHTML = `<span>高速保存中 (${ext.toUpperCase()}): <strong>${(i * stepTime).toFixed(1)}s / ${duration.toFixed(1)}s (${progress}%)</strong></span>`;
 
     // captureStream にフレームを確実に送るための微小ウェイト
     if (i % 2 === 0 || i === totalFrames - 1) {
@@ -1102,7 +1102,7 @@ async function exportInstantGif(startTime, endTime) {
   isExportingGif = true;
   if (recordBtn) {
     recordBtn.disabled = true;
-    recordBtn.textContent = '⌛ フレーム抽出中...';
+    recordBtn.textContent = 'フレーム抽出中...';
   }
 
   const duration = Math.max(0.2, endTime - startTime);
@@ -1151,7 +1151,7 @@ async function exportInstantGif(startTime, endTime) {
 
     if (i % 4 === 0 || i === totalFrames - 1) {
       const progress = Math.min(100, Math.round(((i + 1) / totalFrames) * 100));
-      recordStatus.innerHTML = `<span>⚡ GIFフレーム抽出中: <strong>${(i * stepTime).toFixed(1)}s / ${duration.toFixed(1)}s (${progress}%)</strong></span>`;
+      recordStatus.innerHTML = `<span>GIFフレーム抽出中: <strong>${(i * stepTime).toFixed(1)}s / ${duration.toFixed(1)}s (${progress}%)</strong></span>`;
       await new Promise(r => setTimeout(r, 10));
     }
   }
@@ -1229,16 +1229,16 @@ function handleExportDone(blob, ext) {
     document.body.removeChild(a);
   }, 250);
 
-  recordStatus.innerHTML = `<span style="color:#00ffaa;font-weight:bold;">✅ 保存完了！</span> (${ext.toUpperCase()} 形式で保存されました)`;
+  recordStatus.innerHTML = `<span style="color:#00ffaa;font-weight:bold;">保存完了！</span> (${ext.toUpperCase()} 形式で保存されました)`;
 
   // iPhone / スマホ用 カメラロール保存エリアを表示
   if (shareActionArea) {
     shareActionArea.style.display = 'flex';
     if (saveToPhotosBtn) {
       if (ext === 'png' || ext === 'jpg' || ext === 'gif') {
-        saveToPhotosBtn.textContent = '📱 カメラロール（写真）に保存 / 共有';
+        saveToPhotosBtn.textContent = 'カメラロール（写真）に保存 / 共有';
       } else {
-        saveToPhotosBtn.textContent = '📱 iPhoneカメラロールに保存 (共有)';
+        saveToPhotosBtn.textContent = 'iPhoneカメラロールに保存 (共有)';
       }
     }
     if (imagePreviewArea) {
@@ -1269,7 +1269,7 @@ function updateExportUIState() {
     if (modeControlArea) modeControlArea.style.display = 'none';
     if (durationSettingRow) durationSettingRow.style.display = 'none';
     if (recordBtn) {
-      recordBtn.textContent = `📷 静止画を保存 (.${selectedFormat})`;
+      recordBtn.textContent = `静止画を保存 (.${selectedFormat})`;
       recordBtn.classList.remove('recording');
       recordBtn.disabled = false;
     }
@@ -1287,27 +1287,27 @@ function updateExportUIState() {
 
   if (recordBtn) {
     if (isRecording) {
-      recordBtn.textContent = `⏹️ 録画停止 (保存)`;
+      recordBtn.textContent = `録画停止 (保存)`;
       recordBtn.classList.add('recording');
       recordBtn.disabled = false;
     } else {
       recordBtn.classList.remove('recording');
       if (selectedFormat === 'gif') {
         if (currentExportMode === 'instant') {
-          recordBtn.textContent = '⚡ GIFをその場で保存 (.gif)';
+          recordBtn.textContent = 'GIFをその場で保存 (.gif)';
         } else if (currentExportMode === 'timer') {
-          recordBtn.textContent = '⏱️ 指定秒数でGIF録画 (.gif)';
+          recordBtn.textContent = '指定秒数でGIF録画 (.gif)';
         } else {
-          recordBtn.textContent = '🔴 GIF録画開始 (.gif)';
+          recordBtn.textContent = 'GIF録画開始 (.gif)';
         }
       } else {
         const extUpper = selectedFormat.toUpperCase();
         if (currentExportMode === 'instant') {
-          recordBtn.textContent = `⚡ その場で保存 (${extUpper})`;
+          recordBtn.textContent = `その場で保存 (${extUpper})`;
         } else if (currentExportMode === 'timer') {
-          recordBtn.textContent = `⏱️ 指定秒数で録画開始 (${extUpper})`;
+          recordBtn.textContent = `指定秒数で録画開始 (${extUpper})`;
         } else {
-          recordBtn.textContent = `🔴 録画開始 (${extUpper})`;
+          recordBtn.textContent = `録画開始 (${extUpper})`;
         }
       }
     }
@@ -1315,10 +1315,10 @@ function updateExportUIState() {
 
   if (openExportModalBtn) {
     if (isRecording) {
-      openExportModalBtn.textContent = '⏹️ 録画停止 (保存)';
+      openExportModalBtn.textContent = '録画停止 (保存)';
       openExportModalBtn.classList.add('recording');
     } else {
-      openExportModalBtn.textContent = '💾 動画・画像を保存 (書き出し)';
+      openExportModalBtn.textContent = '動画・画像を保存 (書き出し)';
       openExportModalBtn.classList.remove('recording');
     }
   }
@@ -1493,7 +1493,7 @@ function startExport() {
     }
   }
 
-  // 「⚡ その場で保存」モードなら、等速再生の録画ではなく高速一括レンダリングを実行！
+  // 「その場で保存」モードなら、等速再生の録画ではなく高速一括レンダリングを実行！
   if (currentExportMode === 'instant') {
     exportInstantVideo(sTime, eTime, ext, mimeType);
     return;
@@ -1758,7 +1758,7 @@ try {
   if (savedStr) {
     const savedData = JSON.parse(savedStr);
     loadProject(savedData);
-    if (saveBadge) saveBadge.textContent = '⚡ 前回の作業を復元';
+    if (saveBadge) saveBadge.textContent = '前回の作業を復元';
   } else {
     updateTimelineBounds();
     renderFrame();

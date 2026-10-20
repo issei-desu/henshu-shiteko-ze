@@ -5,7 +5,7 @@
   <title>Multi-Track Chroma Video Editor</title>
   <meta name="theme-color" content="#1a1a22" />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=20261020_03" />
+  <link rel="stylesheet" href="style.css?v=20261020_04" />
 </head>
 <body>
   <div class="app-container">
@@ -17,13 +17,13 @@
           <span class="layer-hint">上: 最背面 / 下: 最前面</span>
         </div>
         <div class="project-toolbar">
-          <button id="saveProjectBtn" type="button" class="btn white-mini-btn" title="編集内容をファイルに保存">💾 保存</button>
+          <button id="saveProjectBtn" type="button" class="btn white-mini-btn" title="編集内容をファイルに保存">保存</button>
           <label class="btn white-mini-btn" title="保存したプロジェクトファイルを開く">
-            📂 開く
+            開く
             <input type="file" id="loadProjectInput" accept=".json" hidden />
           </label>
-          <button id="resetProjectBtn" type="button" class="btn white-mini-btn danger-btn" title="編集内容を初期化">🗑️ クリア</button>
-          <span id="saveBadge" class="save-badge">⚡ 自動保存中</span>
+          <button id="resetProjectBtn" type="button" class="btn white-mini-btn danger-btn" title="編集内容を初期化">クリア</button>
+          <span id="saveBadge" class="save-badge">自動保存中</span>
         </div>
         <div class="add-btn-group">
           <label class="btn white-btn add-btn">
@@ -53,7 +53,7 @@
 
         <div class="button-group">
           <button id="openExportModalBtn" type="button" class="btn white-btn-record" onclick="if(typeof openExportModal==='function')openExportModal();">
-            💾 動画・画像を保存 (書き出し)
+            動画・画像を保存 (書き出し)
           </button>
         </div>
         <div id="recordStatus" class="record-status"></div>
@@ -61,7 +61,7 @@
         <!-- iPhone / スマホ用 カメラロール保存アクションエリア -->
         <div id="shareActionArea" class="share-action-area" style="display: none;">
           <button id="saveToPhotosBtn" type="button" class="btn camera-roll-btn">
-            📱 iPhoneカメラロールに保存 (共有)
+            iPhoneカメラロールに保存 (共有)
           </button>
           <div class="share-tip">※タップすると共有メニューが開き「ビデオを保存」または「画像を保存」で写真アプリに追加できます</div>
           <div id="imagePreviewArea" class="image-preview-area" style="display: none;"></div>
@@ -73,7 +73,7 @@
     <div id="exportModal" class="modal-overlay" style="display: none;">
       <div class="modal-content">
         <div class="modal-header">
-          <h3>💾 保存形式と方法を選択</h3>
+          <h3>保存形式と方法を選択</h3>
           <button id="closeExportModalBtn" type="button" class="modal-close-btn">&times;</button>
         </div>
 
@@ -94,9 +94,9 @@
           <div class="export-mode-control" id="modeControlArea">
             <label>保存方法 (モード):</label>
             <div class="export-mode-tabs">
-              <button type="button" class="mode-tab active" data-mode="instant" title="指定秒数をその場ですぐに書き出し">⚡ その場で保存</button>
-              <button type="button" class="mode-tab" data-mode="timer" title="プレビュー再生しながら指定秒数で自動停止">⏱️ 秒数指定録画</button>
-              <button type="button" class="mode-tab" data-mode="manual" title="録画開始から手動停止まで録画保存">🔴 自由録画</button>
+              <button type="button" class="mode-tab active" data-mode="instant" title="指定秒数をその場ですぐに書き出し">その場で保存</button>
+              <button type="button" class="mode-tab" data-mode="timer" title="プレビュー再生しながら指定秒数で自動停止">秒数指定録画</button>
+              <button type="button" class="mode-tab" data-mode="manual" title="録画開始から手動停止まで録画保存">自由録画</button>
             </div>
           </div>
 
@@ -124,7 +124,7 @@
 
         <div class="modal-footer">
           <button id="cancelExportModalBtn" type="button" class="btn white-mini-btn">キャンセル</button>
-          <button id="recordBtn" type="button" class="btn white-btn-record modal-exec-btn">⚡ 保存を実行する</button>
+          <button id="recordBtn" type="button" class="btn white-btn-record modal-exec-btn">保存を実行する</button>
         </div>
       </div>
     </div>
@@ -140,7 +140,7 @@
 
         <!-- プレビュー直下のシークバー＆タイム表示 -->
         <div class="timeline-bar-area">
-          <button id="playBtn" type="button" class="btn white-mini-btn">▶ 再生</button>
+          <button id="playBtn" type="button" class="btn white-mini-btn">再生</button>
           <input type="range" id="timeSeeker" min="0" max="10" step="0.05" value="0" />
           <div class="time-display">
             <span id="currentTimeDisplay">00:00.00</span> / <span id="maxTimeDisplay">00:10.00</span>
@@ -152,18 +152,18 @@
       <div class="footer-links">
         <div class="layout-toggle">
           <span class="layout-label">画面表示:</span>
-          <button id="modeAutoBtn" type="button" class="btn layout-btn active" title="画面幅に合わせて自動判定">⚙️ 自動</button>
-          <button id="modePcBtn" type="button" class="btn layout-btn" title="PCレイアウトで固定">💻 PC</button>
-          <button id="modeMobileBtn" type="button" class="btn layout-btn" title="スマホレイアウトで固定">📱 スマホ</button>
+          <button id="modeAutoBtn" type="button" class="btn layout-btn active" title="画面幅に合わせて自動判定">自動</button>
+          <button id="modePcBtn" type="button" class="btn layout-btn" title="PCレイアウトで固定">PC</button>
+          <button id="modeMobileBtn" type="button" class="btn layout-btn" title="スマホレイアウトで固定">スマホ</button>
         </div>
-        <a href="download.html" class="download-guide-link">📥 アプリ版ダウンロード案内</a>
-        <span class="build-timestamp">最終更新: 2026/10/20 16:42</span>
+        <a href="download.html" class="download-guide-link">アプリ版ダウンロード案内</a>
+        <span class="build-timestamp">最終更新: 2026/10/20 16:55</span>
       </div>
     </main>
   </div>
 
   <script src="gifshot.min.js"></script>
-  <script src="main.js?v=20261020_03"></script>
+  <script src="main.js?v=20261020_04"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(console.error);
