@@ -248,6 +248,7 @@ async function loadProject(project) {
     exportTargetDuration = project.exportDuration;
   }
 
+  // まずベースオブジェクトを作成（IndexedDBからの読み込み状態を保持）
   layers = project.layers.map(saved => {
     if (saved.type === 'text') {
       return {
@@ -261,7 +262,8 @@ async function loadProject(project) {
         ...saved,
         element: dummyElem,
         ready: false,
-        needsRelink: true
+        isLoadingMedia: true, // メディア復元中フラグ
+        needsRelink: false
       };
     }
   });
@@ -270,37 +272,60 @@ async function loadProject(project) {
   renderAllLayerCards();
   renderFrame();
 
-  // IndexedDBから動画・画像Blobの自動復元を試行
+  // IndexedDBから動画・画像Blobの自動復元
   for (const layer of layers) {
     if (layer.type === 'text') continue;
-    const blob = await getMediaBlob(layer.id);
-    if (blob) {
-      const url = URL.createObjectURL(blob);
-      if (layer.type === 'video') {
-        const video = document.createElement('video');
-        video.src = url;
-        video.loop = true;
-        video.muted = true;
-        video.playsInline = true;
-        video.onloadedmetadata = () => {
-          layer.element = video;
-          layer.ready = true;
-          layer.needsRelink = false;
-          updateTimelineBounds();
-          renderAllLayerCards();
-          renderFrame();
-        };
+    try {
+      const blob = await getMediaBlob(layer.id);
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        if (layer.type === 'video') {
+          const video = document.createElement('video');
+          video.src = url;
+          video.loop = true;
+          video.muted = true;
+          video.playsInline = true;
+          video.onloadedmetadata = () => {
+            layer.element = video;
+            layer.ready = true;
+            layer.isLoadingMedia = false;
+            layer.needsRelink = false;
+            updateTimelineBounds();
+            renderAllLayerCards();
+            renderFrame();
+          };
+          video.onerror = () => {
+            layer.isLoadingMedia = false;
+            layer.needsRelink = true;
+            renderAllLayerCards();
+          };
+        } else {
+          const img = new Image();
+          img.src = url;
+          img.onload = () => {
+            layer.element = img;
+            layer.ready = true;
+            layer.isLoadingMedia = false;
+            layer.needsRelink = false;
+            renderAllLayerCards();
+            renderFrame();
+          };
+          img.onerror = () => {
+            layer.isLoadingMedia = false;
+            layer.needsRelink = true;
+            renderAllLayerCards();
+          };
+        }
       } else {
-        const img = new Image();
-        img.src = url;
-        img.onload = () => {
-          layer.element = img;
-          layer.ready = true;
-          layer.needsRelink = false;
-          renderAllLayerCards();
-          renderFrame();
-        };
+        // IndexedDBに未保存（古いキャッシュデータ）の場合は再リンクを促す
+        layer.isLoadingMedia = false;
+        layer.needsRelink = true;
+        renderAllLayerCards();
       }
+    } catch (e) {
+      layer.isLoadingMedia = false;
+      layer.needsRelink = true;
+      renderAllLayerCards();
     }
   }
 }
@@ -451,16 +476,25 @@ function renderAllLayerCards() {
     const foldText = layer.collapsed ? '開く ▼' : '閉じる ▲';
 
     let relinkHTML = '';
-    if (layer.type !== 'text' && layer.needsRelink && !layer.ready) {
-      relinkHTML = `
-        <div class="relink-alert">
-          <span class="relink-text">⚠️ 素材ファイルの再読み込みが必要です（${layer.name}）</span>
-          <label class="btn white-btn relink-btn">
-            📁 同じ（または新しい）ファイルを選択
-            <input type="file" class="relink-input" accept="${layer.type === 'video' ? 'video/*' : 'image/*'}" hidden />
-          </label>
-        </div>
-      `;
+    if (layer.type !== 'text') {
+      if (layer.isLoadingMedia) {
+        relinkHTML = `
+          <div class="relink-alert" style="background:#1d2a3a; border-color:#2a4a75;">
+            <span class="relink-text" style="color:#7bb5ff;">⌛ ブラウザ内ストレージから素材を復元中... (${layer.name})</span>
+          </div>
+        `;
+      } else if (layer.needsRelink && !layer.ready) {
+        relinkHTML = `
+          <div class="relink-alert">
+            <span class="relink-text">⚠️ 素材ファイルの再読み込みが必要です（${layer.name}）</span>
+            <label class="btn white-btn relink-btn">
+              📁 同じ（または新しい）ファイルを選択
+              <input type="file" class="relink-input" accept="${layer.type === 'video' ? 'video/*' : 'image/*'}" hidden />
+            </label>
+            <div style="font-size:0.75rem; color:#8da4c4; margin-top:4px;">※一度選択すると次回以降は自動で記憶・復元されます</div>
+          </div>
+        `;
+      }
     }
 
     let controlsHTML = '';
