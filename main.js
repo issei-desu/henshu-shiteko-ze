@@ -32,6 +32,28 @@ const playBtn = document.getElementById('playBtn');
 const recordBtn = document.getElementById('recordBtn');
 const recordStatus = document.getElementById('recordStatus');
 
+const openExportModalBtn = document.getElementById('openExportModalBtn');
+const exportModal = document.getElementById('exportModal');
+const closeExportModalBtn = document.getElementById('closeExportModalBtn');
+const cancelExportModalBtn = document.getElementById('cancelExportModalBtn');
+
+function openExportModal() {
+  if (exportModal) {
+    exportModal.style.display = 'flex';
+    updateExportUIState();
+  }
+}
+
+function closeExportModal() {
+  if (exportModal) {
+    exportModal.style.display = 'none';
+  }
+}
+
+// グローバルスコープにも公開
+window.openExportModal = openExportModal;
+window.closeExportModal = closeExportModal;
+
 const offCanvas = document.createElement('canvas');
 const offCtx = offCanvas.getContext('2d');
 
@@ -1182,24 +1204,6 @@ if (exportDurationInput) {
     exportTargetDuration = parseFloat(exportDurationInput.value) || 5;
     triggerAutoSave();
   });
-}
-
-const openExportModalBtn = document.getElementById('openExportModalBtn');
-const exportModal = document.getElementById('exportModal');
-const closeExportModalBtn = document.getElementById('closeExportModalBtn');
-const cancelExportModalBtn = document.getElementById('cancelExportModalBtn');
-
-function openExportModal() {
-  if (exportModal) {
-    exportModal.style.display = 'flex';
-    updateExportUIState();
-  }
-}
-
-function closeExportModal() {
-  if (exportModal) {
-    exportModal.style.display = 'none';
-  }
 }
 
 if (openExportModalBtn) {
