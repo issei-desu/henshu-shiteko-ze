@@ -58,10 +58,93 @@ let lastExportedBlob = null;
 let lastExportedUrl = null;
 
 // ========================================================
-// 超軽量・容量ゼロの保存・復元システム (localStorage / JSON)
+// 超軽量・容量ゼロの保存・復元システム (localStorage / JSON) & IndexedDB メディアストレージ
 // ========================================================
 const STORAGE_KEY = 'chroma_video_editor_autosave_v1';
 let autoSaveTimer = null;
+
+// IndexedDB の初期化とヘルパー (動画・画像 Blob の永続保存用)
+const DB_NAME = 'chroma_editor_media_db';
+const DB_VERSION = 1;
+const STORE_NAME = 'media_files';
+
+function openMediaDB() {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) {
+      return reject(new Error('IndexedDB not supported'));
+    }
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function saveMediaBlob(id, blob, mimeType) {
+  try {
+    const db = await openMediaDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.put({ id, blob, mimeType, updatedAt: Date.now() });
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (err) {
+    console.warn('Media blob save error:', err);
+  }
+}
+
+async function getMediaBlob(id) {
+  try {
+    const db = await openMediaDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(id);
+      req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) {
+    console.warn('Media blob fetch error:', err);
+    return null;
+  }
+}
+
+async function deleteMediaBlob(id) {
+  try {
+    const db = await openMediaDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.delete(id);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (err) {
+    console.warn('Media blob delete error:', err);
+  }
+}
+
+async function clearMediaDB() {
+  try {
+    const db = await openMediaDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.clear();
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (err) {
+    console.warn('Media blob clear error:', err);
+  }
+}
 
 function getProjectData() {
   return {
@@ -107,7 +190,7 @@ function triggerAutoSave() {
       const data = getProjectData();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       if (saveBadge) {
-        saveBadge.textContent = '⚡ 保存完了';
+        saveBadge.textContent = '⚡ 保存完了 (動画・設定)';
         saveBadge.style.color = '#4ade80';
       }
     } catch (e) {
@@ -116,7 +199,7 @@ function triggerAutoSave() {
   }, 400);
 }
 
-function loadProject(project) {
+async function loadProject(project) {
   if (!project || !Array.isArray(project.layers)) return;
 
   if (project.aspectRatio) {
@@ -164,6 +247,40 @@ function loadProject(project) {
   updateTimelineBounds();
   renderAllLayerCards();
   renderFrame();
+
+  // IndexedDBから動画・画像Blobの自動復元を試行
+  for (const layer of layers) {
+    if (layer.type === 'text') continue;
+    const blob = await getMediaBlob(layer.id);
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      if (layer.type === 'video') {
+        const video = document.createElement('video');
+        video.src = url;
+        video.loop = true;
+        video.muted = true;
+        video.playsInline = true;
+        video.onloadedmetadata = () => {
+          layer.element = video;
+          layer.ready = true;
+          layer.needsRelink = false;
+          updateTimelineBounds();
+          renderAllLayerCards();
+          renderFrame();
+        };
+      } else {
+        const img = new Image();
+        img.src = url;
+        img.onload = () => {
+          layer.element = img;
+          layer.ready = true;
+          layer.needsRelink = false;
+          renderAllLayerCards();
+          renderFrame();
+        };
+      }
+    }
+  }
 }
 
 // アスペクト比変更
@@ -206,9 +323,13 @@ assetInput.addEventListener('change', (e) => {
   files.forEach(file => {
     const url = URL.createObjectURL(file);
     const isVideo = file.type.startsWith('video/');
+    const layerId = 'layer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+    // IndexedDB に動画/画像ファイルを保存
+    saveMediaBlob(layerId, file, file.type);
 
     const layer = {
-      id: 'layer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      id: layerId,
       name: file.name,
       type: isVideo ? 'video' : 'image',
       element: isVideo ? document.createElement('video') : new Image(),
@@ -443,6 +564,8 @@ function renderAllLayerCards() {
         if (!file) return;
         const url = URL.createObjectURL(file);
         layer.name = file.name;
+        // 再リンク時も IndexedDB に保存更新
+        saveMediaBlob(layer.id, file, file.type);
         const isVideo = file.type.startsWith('video/') || layer.type === 'video';
         if (isVideo) {
           layer.element = document.createElement('video');
@@ -511,6 +634,7 @@ function renderAllLayerCards() {
           renderFrame();
           triggerAutoSave();
         } else if (action === 'delete') {
+          deleteMediaBlob(layer.id);
           layers = layers.filter(l => l.id !== layer.id);
           renderAllLayerCards();
           updateTimelineBounds();
@@ -1010,6 +1134,16 @@ function updateExportUIState() {
       }
     }
   }
+
+  if (openExportModalBtn) {
+    if (isRecording) {
+      openExportModalBtn.textContent = '⏹️ 録画停止 (保存)';
+      openExportModalBtn.classList.add('recording');
+    } else {
+      openExportModalBtn.textContent = '💾 動画・画像を保存 (書き出し)';
+      openExportModalBtn.classList.remove('recording');
+    }
+  }
 }
 
 function setExportMode(mode) {
@@ -1050,9 +1184,54 @@ if (exportDurationInput) {
   });
 }
 
+const openExportModalBtn = document.getElementById('openExportModalBtn');
+const exportModal = document.getElementById('exportModal');
+const closeExportModalBtn = document.getElementById('closeExportModalBtn');
+const cancelExportModalBtn = document.getElementById('cancelExportModalBtn');
+
+function openExportModal() {
+  if (exportModal) {
+    exportModal.style.display = 'flex';
+    updateExportUIState();
+  }
+}
+
+function closeExportModal() {
+  if (exportModal) {
+    exportModal.style.display = 'none';
+  }
+}
+
+if (openExportModalBtn) {
+  openExportModalBtn.addEventListener('click', () => {
+    if (isRecording) {
+      stopExport();
+    } else {
+      openExportModal();
+    }
+  });
+}
+
+if (closeExportModalBtn) {
+  closeExportModalBtn.addEventListener('click', closeExportModal);
+}
+
+if (cancelExportModalBtn) {
+  cancelExportModalBtn.addEventListener('click', closeExportModal);
+}
+
+if (exportModal) {
+  exportModal.addEventListener('click', (e) => {
+    if (e.target === exportModal) {
+      closeExportModal();
+    }
+  });
+}
+
 if (recordBtn) {
   recordBtn.addEventListener('click', () => {
     if (!isRecording) {
+      closeExportModal();
       startExport();
     } else {
       stopExport();
@@ -1327,6 +1506,7 @@ if (resetProjectBtn) {
     if (confirm('現在の編集内容をクリアして初期状態に戻しますか？')) {
       layers = [];
       localStorage.removeItem(STORAGE_KEY);
+      clearMediaDB();
       updateTimelineBounds();
       renderAllLayerCards();
       renderFrame();
