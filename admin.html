@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>案内ページ管理エディタ - Admin</title>
+  <meta name="theme-color" content="#1a1a22" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #0b0c10;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.5;
+      padding: 24px;
+    }
+    .admin-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #1f293d;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      background: rgba(0, 240, 255, 0.15);
+      color: #00f0ff;
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button, .btn-link {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #334155;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    button:hover, .btn-link:hover {
+      background: #334155;
+    }
+    .btn-save {
+      background: #00f0ff;
+      color: #000000;
+      border: none;
+    }
+    .btn-save:hover {
+      background: #38f4ff;
+    }
+    .btn-reset {
+      color: #f87171;
+      border-color: #7f1d1d;
+    }
+    .btn-reset:hover {
+      background: rgba(239, 68, 68, 0.15);
+    }
+    .editor-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 900px) {
+      .editor-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    .panel {
+      background: #131722;
+      border: 1px solid #242c3f;
+      border-radius: 10px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .panel h2 {
+      font-size: 1.15rem;
+      color: #00f0ff;
+      border-bottom: 1px solid #242c3f;
+      padding-bottom: 8px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    input[type="text"], textarea {
+      background: #0a0d14;
+      border: 1px solid #2d3748;
+      color: #f1f5f9;
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-size: 0.92rem;
+      font-family: inherit;
+      width: 100%;
+    }
+    input[type="text"]:focus, textarea:focus {
+      outline: none;
+      border-color: #00f0ff;
+      box-shadow: 0 0 0 2px rgba(0, 240, 255, 0.2);
+    }
+    textarea {
+      resize: vertical;
+      min-height: 70px;
+    }
+    .preview-box {
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #0d0d12;
+      min-height: 480px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .preview-box iframe {
+      width: 100%;
+      height: 100%;
+      min-height: 550px;
+      border: none;
+      background: #0d0d12;
+    }
+    .status-msg {
+      font-size: 0.85rem;
+      padding: 8px 14px;
+      border-radius: 6px;
+      display: none;
+    }
+    .status-msg.success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid #10b981;
+      color: #34d399;
+      display: block;
+    }
+    .features-editor {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .feature-item-card {
+      background: #182030;
+      border: 1px solid #29354d;
+      padding: 12px;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <header>
+      <h1>案内ページ 管理エディタ <span class="badge">ADMIN</span></h1>
+      <div class="header-actions">
+        <a href="download.html" target="_blank" class="btn-link">公開ページを見る (別タブ)</a>
+        <button id="btn-export-html" type="button">HTMLファイルとして書き出す</button>
+        <button id="btn-reset" class="btn-reset" type="button">デフォルトに戻す</button>
+        <button id="btn-save" class="btn-save" type="button">ブラウザに保存して即反映</button>
+      </div>
+    </header>
+
+    <div id="status-area" class="status-msg"></div>
+
+    <div class="editor-layout">
+      <!-- 編集フォーム -->
+      <div class="panel">
+        <h2>ページ基本設定</h2>
+        <div class="form-group">
+          <label for="app-title">アプリタイトル (H1)</label>
+          <input type="text" id="app-title" />
+        </div>
+        <div class="form-group">
+          <label for="app-lead">概要・キャッチコピー (サブタイトル)</label>
+          <textarea id="app-lead"></textarea>
+        </div>
+
+        <h2 style="margin-top: 10px;">Windows 版 設定</h2>
+        <div class="form-group">
+          <label for="win-desc">Windows版 説明文</label>
+          <textarea id="win-desc"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="win-btn-text">ダウンロードボタン表記</label>
+          <input type="text" id="win-btn-text" />
+        </div>
+        <div class="form-group">
+          <label for="win-url">インストーラー ダウンロードURL (.exe)</label>
+          <input type="text" id="win-url" />
+        </div>
+
+        <h2 style="margin-top: 10px;">Web 版 設定</h2>
+        <div class="form-group">
+          <label for="web-desc">Web版 説明文</label>
+          <textarea id="web-desc"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="web-pc-text">PC用ボタン表記</label>
+          <input type="text" id="web-pc-text" />
+        </div>
+        <div class="form-group">
+          <label for="web-mobile-text">スマホ用ボタン表記</label>
+          <input type="text" id="web-mobile-text" />
+        </div>
+
+        <h2 style="margin-top: 10px;">主な機能紹介 (4項目)</h2>
+        <div class="features-editor" id="features-container">
+          <!-- JSで自動展開 -->
+        </div>
+      </div>
+
+      <!-- リアルタイムプレビュー -->
+      <div class="panel">
+        <h2>リアルタイム プレビュー</h2>
+        <div class="preview-box">
+          <iframe id="preview-iframe" src="download.html"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'chroma_video_editor_download_config';
+
+    const defaultConfig = {
+      appTitle: 'Multi-Track Chroma Video Editor',
+      appLead: 'グリーンバック透過・テキスト合成・動画録画がブラウザでもPCアプリでも動く動画編集ツール',
+      winDesc: '専用デスクトップアプリとして利用可能。インストーラーを実行するだけですぐに利用できます。',
+      winBtnText: 'Windows版をダウンロード (.exe)',
+      winUrl: 'https://github.com/issei-desu/henshu-shiteko-ze/releases/download/v1.0.1/MultiTrackVideoEditor-Setup-1.0.1.exe',
+      webDesc: 'インストール不要。ブラウザで今すぐ編集を開始できます。お使いの端末に合わせてレイアウトを選べます。',
+      webPcText: 'PC用レイアウトで開く',
+      webMobileText: 'スマホ用レイアウトで開く',
+      features: [
+        {
+          title: 'クロマキー合成',
+          desc: '動画や画像のグリーンバックをリアルタイムに自動透過。感度や輝度も微調整可能。'
+        },
+        {
+          title: 'テキストレイヤー',
+          desc: '自由な文字追加、フォントサイズ・文字色・縁取りカラー・太さのフルカスタマイズ。'
+        },
+        {
+          title: '自動保存 (端末容量ゼロ)',
+          desc: '編集操作をリアルタイムに自動保存。再読み込みや誤って閉じても即座に作業復元。'
+        },
+        {
+          title: '多彩な保存形式 ＆ 3つの保存方法',
+          desc: 'MP4 / WebM / MKV / GIFアニメ / 静止画 (PNG/JPG) に対応。「その場で保存」「秒数指定録画」「自由録画」から選べ、iPhoneのカメラロール直接保存（共有シート連携）もワンタップで可能。'
+        }
+      ]
+    };
+
+    function loadConfig() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          return Object.assign({}, defaultConfig, JSON.parse(saved));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      return Object.assign({}, defaultConfig);
+    }
+
+    let currentConfig = loadConfig();
+
+    function populateForm() {
+      document.getElementById('app-title').value = currentConfig.appTitle;
+      document.getElementById('app-lead').value = currentConfig.appLead;
+      document.getElementById('win-desc').value = currentConfig.winDesc;
+      document.getElementById('win-btn-text').value = currentConfig.winBtnText;
+      document.getElementById('win-url').value = currentConfig.winUrl;
+      document.getElementById('web-desc').value = currentConfig.webDesc;
+      document.getElementById('web-pc-text').value = currentConfig.webPcText;
+      document.getElementById('web-mobile-text').value = currentConfig.webMobileText;
+
+      const container = document.getElementById('features-container');
+      container.innerHTML = '';
+      currentConfig.features.forEach((f, idx) => {
+        const card = document.createElement('div');
+        card.className = 'feature-item-card';
+        card.innerHTML = `
+          <div class="form-group">
+            <label>機能 ${idx + 1} 見出し</label>
+            <input type="text" class="feature-title" data-idx="${idx}" value="${f.title.replace(/"/g, '&quot;')}" />
+          </div>
+          <div class="form-group">
+            <label>機能 ${idx + 1} 説明</label>
+            <textarea class="feature-desc" data-idx="${idx}">${f.desc}</textarea>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function readForm() {
+      currentConfig.appTitle = document.getElementById('app-title').value;
+      currentConfig.appLead = document.getElementById('app-lead').value;
+      currentConfig.winDesc = document.getElementById('win-desc').value;
+      currentConfig.winBtnText = document.getElementById('win-btn-text').value;
+      currentConfig.winUrl = document.getElementById('win-url').value;
+      currentConfig.webDesc = document.getElementById('web-desc').value;
+      currentConfig.webPcText = document.getElementById('web-pc-text').value;
+      currentConfig.webMobileText = document.getElementById('web-mobile-text').value;
+
+      document.querySelectorAll('.feature-title').forEach(el => {
+        const idx = el.dataset.idx;
+        currentConfig.features[idx].title = el.value;
+      });
+      document.querySelectorAll('.feature-desc').forEach(el => {
+        const idx = el.dataset.idx;
+        currentConfig.features[idx].desc = el.value;
+      });
+    }
+
+    function updatePreview() {
+      readForm();
+      const iframe = document.getElementById('preview-iframe');
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'APPLY_CONFIG', config: currentConfig }, '*');
+      }
+    }
+
+    // フォーム変更時にプレビュー更新
+    document.addEventListener('input', () => {
+      updatePreview();
+    });
+
+    // 保存ボタン
+    document.getElementById('btn-save').addEventListener('click', () => {
+      readForm();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentConfig));
+      showStatus('設定をブラウザに保存しました！download.html を開くと常にこの内容が反映されます。');
+      updatePreview();
+    });
+
+    // リセットボタン
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      if (confirm('デフォルトの設定に戻しますか？')) {
+        localStorage.removeItem(STORAGE_KEY);
+        currentConfig = Object.assign({}, defaultConfig);
+        populateForm();
+        updatePreview();
+        showStatus('デフォルトの設定に戻しました。');
+      }
+    });
+
+    // HTMLとしてエクスポート
+    document.getElementById('btn-export-html').addEventListener('click', async () => {
+      readForm();
+      const res = await fetch('download.html');
+      let html = await res.text();
+
+      // HTMLの要素を置換
+      html = html.replace(/<h1>.*?<\/h1>/s, `<h1>${currentConfig.appTitle}</h1>`);
+      html = html.replace(/<p class="lead">.*?<\/p>/s, `<p class="lead">${currentConfig.appLead}</p>`);
+      
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'download.html';
+      a.click();
+      showStatus('download.html のダウンロードを開始しました。');
+    });
+
+    function showStatus(text) {
+      const area = document.getElementById('status-area');
+      area.textContent = text;
+      area.className = 'status-msg success';
+      setTimeout(() => {
+        area.style.display = 'none';
+      }, 5000);
+    }
+
+    populateForm();
+
+    const iframe = document.getElementById('preview-iframe');
+    iframe.addEventListener('load', () => {
+      setTimeout(updatePreview, 200);
+    });
+  </script>
+</body>
+</html>

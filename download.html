@@ -198,10 +198,8 @@
 <body>
   <div class="container">
     <header>
-      <span class="badge">マルチプラットフォーム対応</span>
       <h1>Multi-Track Chroma Video Editor</h1>
       <p class="lead">グリーンバック透過・テキスト合成・動画録画がブラウザでもPCアプリでも動く動画編集ツール</p>
-      <a href="index.html" class="back-link">← エディタ画面を直接開く</a>
     </header>
 
     <div class="grid">
@@ -216,9 +214,6 @@
           </a>
           <a href="index.html?mode=mobile" class="card-button" style="display: flex; align-items: center; justify-content: center; gap: 6px; background: #262c3e; border: 1px solid #455073; color: #ffffff;">
             スマホ用レイアウトで開く
-          </a>
-          <a href="index.html" style="text-align: center; font-size: 0.8rem; color: #8da4c4; text-decoration: underline; margin-top: 2px;">
-            画面幅に合わせて自動判定で開く
           </a>
         </div>
         <div class="instructions">
@@ -277,8 +272,72 @@
 
     <footer>
       <p>Multi-Track Chroma Video Editor &copy; 2026 issei-desu</p>
-      <p style="margin-top: 6px;"><a href="index.html" style="color: #8da4c4; text-decoration: none;">エディタに戻る</a> &bull; <a href="https://github.com/issei-desu/henshu-shiteko-ze" target="_blank" style="color: #8da4c4; text-decoration: none;">GitHub リポジトリ</a></p>
+      <p style="margin-top: 6px;"><a href="index.html" style="color: #8da4c4; text-decoration: none;">エディタに戻る</a> &bull; <a href="https://github.com/issei-desu/henshu-shiteko-ze" target="_blank" style="color: #8da4c4; text-decoration: none;">GitHub リポジトリ</a> &bull; <a href="admin.html" style="color: #4b5563; text-decoration: none; font-size: 0.8rem;">管理画面</a></p>
     </footer>
   </div>
+
+  <script>
+    // 管理画面 (admin.html) で保存された設定、またはプレビュー中のメッセージを反映
+    const STORAGE_KEY = 'chroma_video_editor_download_config';
+
+    function applyConfig(cfg) {
+      if (!cfg) return;
+      if (cfg.appTitle) {
+        const el = document.querySelector('header h1');
+        if (el) el.textContent = cfg.appTitle;
+      }
+      if (cfg.appLead) {
+        const el = document.querySelector('header p.lead');
+        if (el) el.textContent = cfg.appLead;
+      }
+      if (cfg.winDesc) {
+        const el = document.querySelector('.card:nth-of-type(2) .card-desc');
+        if (el) el.textContent = cfg.winDesc;
+      }
+      if (cfg.winBtnText) {
+        const el = document.querySelector('.card:nth-of-type(2) a.card-button');
+        if (el) el.textContent = cfg.winBtnText;
+      }
+      if (cfg.winUrl) {
+        const el = document.querySelector('.card:nth-of-type(2) a.card-button');
+        if (el) el.href = cfg.winUrl;
+      }
+      if (cfg.webDesc) {
+        const el = document.querySelector('.card:nth-of-type(1) .card-desc');
+        if (el) el.textContent = cfg.webDesc;
+      }
+      if (cfg.webPcText) {
+        const el = document.querySelector('.card:nth-of-type(1) a.btn-primary');
+        if (el) el.textContent = cfg.webPcText;
+      }
+      if (cfg.webMobileText) {
+        const el = document.querySelector('.card:nth-of-type(1) a.card-button:not(.btn-primary)');
+        if (el) el.textContent = cfg.webMobileText;
+      }
+      if (Array.isArray(cfg.features)) {
+        const items = document.querySelectorAll('.feature-item');
+        cfg.features.forEach((f, idx) => {
+          if (items[idx]) {
+            items[idx].innerHTML = `<strong>${f.title}</strong>${f.desc}`;
+          }
+        });
+      }
+    }
+
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        applyConfig(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    window.addEventListener('message', (ev) => {
+      if (ev.data && ev.data.type === 'APPLY_CONFIG') {
+        applyConfig(ev.data.config);
+      }
+    });
+  </script>
 </body>
 </html>
