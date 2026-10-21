@@ -26,6 +26,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Setup Wine for Windows cross-compilation
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends wine64 wine32
+
       - name: Build Windows Installer (.exe)
         run: npx electron-builder --win nsis --x64
         env:
