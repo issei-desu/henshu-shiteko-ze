@@ -186,10 +186,90 @@
       gap: 8px;
       position: relative;
     }
+    /* パスワード認証モーダル */
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      background: #090a0f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 20px;
+    }
+    .auth-box {
+      background: #141722;
+      border: 1px solid #2d3748;
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      text-align: center;
+    }
+    .auth-box h2 {
+      font-size: 1.3rem;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+    .auth-box p {
+      color: #94a3b8;
+      font-size: 0.88rem;
+      margin-bottom: 20px;
+    }
+    .auth-box input[type="password"] {
+      background: #0a0d14;
+      border: 1px solid #2d3748;
+      color: #ffffff;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 1.1rem;
+      width: 100%;
+      text-align: center;
+      letter-spacing: 4px;
+      margin-bottom: 16px;
+    }
+    .auth-box input[type="password"]:focus {
+      outline: none;
+      border-color: #00f0ff;
+      box-shadow: 0 0 0 2px rgba(0, 240, 255, 0.25);
+    }
+    .auth-error {
+      color: #f87171;
+      font-size: 0.85rem;
+      margin-top: -8px;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .auth-submit-btn {
+      width: 100%;
+      padding: 10px;
+      justify-content: center;
+      background: #00f0ff;
+      color: #000;
+      border: none;
+      font-size: 0.95rem;
+    }
+    .auth-submit-btn:hover {
+      background: #38f4ff;
+    }
   </style>
 </head>
 <body>
-  <div class="admin-container">
+  <!-- パスワード入力モーダル -->
+  <div id="auth-overlay" class="auth-overlay">
+    <div class="auth-box">
+      <h2>管理者認証</h2>
+      <p>管理画面を開くにはパスワードを入力してください</p>
+      <form id="auth-form">
+        <input type="password" id="auth-pwd" placeholder="••••" autofocus autocomplete="current-password" />
+        <div id="auth-error" class="auth-error">パスワードが間違っています</div>
+        <button type="submit" class="auth-submit-btn">ロック解除</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="admin-container" id="admin-main" style="display: none;">
     <header>
       <h1>案内ページ 管理エディタ <span class="badge">ADMIN</span></h1>
       <div class="header-actions">
@@ -197,6 +277,7 @@
         <button id="btn-export-html" type="button">HTMLファイルとして書き出す</button>
         <button id="btn-reset" class="btn-reset" type="button">デフォルトに戻す</button>
         <button id="btn-save" class="btn-save" type="button">ブラウザに保存して即反映</button>
+        <button id="btn-lock" type="button" style="color: #94a3b8;">ロック</button>
       </div>
     </header>
 
@@ -423,6 +504,55 @@
     }
 
     populateForm();
+
+    // 認証ロジック (パスワード: 1127)
+    const AUTH_KEY = 'chroma_admin_auth_passed';
+    // 1127 の sha256 ハッシュ
+    const PASSWORD_HASH = '7377a71607a8dabc029ab10e7a6a895b92e87762538b10ce8b10c4c9ddc74448';
+
+    async function hashString(str) {
+      const buffer = new TextEncoder().encode(str);
+      const digest = await crypto.subtle.digest('SHA-256', buffer);
+      return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function checkAuth() {
+      const passed = localStorage.getItem(AUTH_KEY);
+      if (passed === 'true') {
+        document.getElementById('auth-overlay').style.display = 'none';
+        document.getElementById('admin-main').style.display = 'block';
+        setTimeout(updatePreview, 100);
+      } else {
+        document.getElementById('auth-overlay').style.display = 'flex';
+        document.getElementById('admin-main').style.display = 'none';
+        const input = document.getElementById('auth-pwd');
+        if (input) input.focus();
+      }
+    }
+
+    document.getElementById('auth-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const val = document.getElementById('auth-pwd').value;
+      const hashed = await hashString(val);
+      if (hashed === PASSWORD_HASH) {
+        localStorage.setItem(AUTH_KEY, 'true');
+        document.getElementById('auth-error').style.display = 'none';
+        checkAuth();
+      } else {
+        const err = document.getElementById('auth-error');
+        err.style.display = 'block';
+        document.getElementById('auth-pwd').value = '';
+        document.getElementById('auth-pwd').focus();
+      }
+    });
+
+    // ロックボタン（再度パスワード入力を要求したい時用）
+    document.getElementById('btn-lock').addEventListener('click', () => {
+      localStorage.removeItem(AUTH_KEY);
+      checkAuth();
+    });
+
+    checkAuth();
 
     const iframe = document.getElementById('preview-iframe');
     iframe.addEventListener('load', () => {
