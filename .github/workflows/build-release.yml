@@ -29,21 +29,27 @@ jobs:
       - name: Build Windows Installer (.exe)
         run: npm run build:win
 
-      - name: Rename installer to standard name if needed
+      - name: Check and prepare artifacts
         shell: bash
         run: |
           ls -la dist/
-          # MultiTrackVideoEditor Setup 1.0.0.exe を MultiTrackVideoEditor-Setup-1.0.0.exe にリネーム
-          if [ -f "dist/MultiTrackVideoEditor Setup 1.0.0.exe" ]; then
-            cp "dist/MultiTrackVideoEditor Setup 1.0.0.exe" "dist/MultiTrackVideoEditor-Setup-1.0.0.exe"
-          fi
+          # Setup exe をハイフン区切り名にコピー/標準化
+          for f in dist/*Setup*.exe; do
+            if [ -f "$f" ]; then
+              base=$(basename "$f")
+              newname=$(echo "$base" | tr ' ' '-')
+              if [ "$base" != "$newname" ]; then
+                cp "$f" "dist/$newname"
+              fi
+            fi
+          done
+          ls -la dist/
 
       - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            dist/MultiTrackVideoEditor-Setup-1.0.0.exe
-            dist/MultiTrackVideoEditor Setup 1.0.0.exe
+            dist/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

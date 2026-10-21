@@ -1,6 +1,6 @@
 {
   "name": "multi-track-chroma-video-editor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Multi-Track Chroma Video Editor",
   "main": "electron-main.js",
   "scripts": {
