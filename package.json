@@ -17,7 +17,7 @@
     "productName": "MultiTrackVideoEditor",
     "win": {
       "target": [
-        "zip"
+        "nsis"
       ]
     },
     "linux": {
