@@ -26,17 +26,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Setup Wine for Windows cross-compilation
+      - name: Build Windows Installer with Official Wine Docker
         run: |
-          sudo dpkg --add-architecture i386
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends wine64 wine32
-
-      - name: Build Windows Installer (.exe)
-        run: npx electron-builder --win nsis --x64
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          docker run --rm \
+            --env GH_TOKEN="${{ secrets.GITHUB_TOKEN }}" \
+            --env CSC_IDENTITY_AUTO_DISCOVERY=false \
+            --volume "$(pwd)":/project \
+            --volume ~/.cache/electron:/root/.cache/electron \
+            --volume ~/.cache/electron-builder:/root/.cache/electron-builder \
+            electronuserland/builder:wine \
+            npx electron-builder --win nsis --x64
 
       - name: Check and prepare artifacts
         shell: bash
