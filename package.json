@@ -17,6 +17,9 @@
       "target": [
         "nsis"
       ]
+    },
+    "nsis": {
+      "artifactName": "${productName}.${ext}"
     }
   },
   "devDependencies": {
