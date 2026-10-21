@@ -36,6 +36,8 @@ jobs:
             --volume ~/.cache/electron-builder:/root/.cache/electron-builder \
             electronuserland/builder:wine \
             npx electron-builder --win nsis --x64
+          # Dockerコンテナがroot権限で生成したdistファイルの所有権をrunnerに戻す
+          sudo chown -R $USER:$USER dist/
 
       - name: Check and prepare artifacts
         shell: bash
