@@ -392,9 +392,9 @@
       const res = await fetch('download.html');
       let html = await res.text();
 
-      // HTMLの要素を置換
-      html = html.replace(/<h1>.*?<\/h1>/s, `<h1>${currentConfig.appTitle}</h1>`);
-      html = html.replace(/<p class="lead">.*?<\/p>/s, `<p class="lead">${currentConfig.appLead}</p>`);
+      // HTMLの要素を置換（改行を保持）
+      html = html.replace(/<h1>.*?<\/h1>/s, `<h1>${escapeHtml(currentConfig.appTitle)}</h1>`);
+      html = html.replace(/<p class="lead">.*?<\/p>/s, `<p class="lead">${escapeHtml(currentConfig.appLead)}</p>`);
       
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
       const a = document.createElement('a');
@@ -403,6 +403,15 @@
       a.click();
       showStatus('download.html のダウンロードを開始しました。');
     });
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+    }
 
     function showStatus(text) {
       const area = document.getElementById('status-area');
