@@ -10,7 +10,7 @@ function createWindow() {
     minWidth: 1000,
     minHeight: 700,
     autoHideMenuBar: false,
-    title: 'Multi-Track Chroma Video Editor',
+    title: '素人が作った編集アプリ',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true

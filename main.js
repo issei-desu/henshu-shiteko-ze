@@ -1575,7 +1575,7 @@ if (saveToPhotosBtn) {
         await navigator.share({
           files: [lastExportedFile],
           title: '編集動画の保存',
-          text: 'Multi-Track Chroma Video Editorから保存'
+          text: '素人が作った編集アプリから保存'
         });
       } catch (err) {
         if (err.name !== 'AbortError') {

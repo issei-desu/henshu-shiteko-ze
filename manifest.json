@@ -1,6 +1,6 @@
 {
-  "name": "Multi-Track Chroma Video Editor",
-  "short_name": "VideoEditor",
+  "name": "素人が作った編集アプリ",
+  "short_name": "素人編集アプリ",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#000000",
