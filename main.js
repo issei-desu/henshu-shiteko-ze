@@ -754,59 +754,102 @@ function renderAllLayerCards() {
     if (dragHandle) {
       let isTouching = false;
       let targetOverCard = null;
+      let isTopTarget = false;
+      let touchOffsetY = 0;
+      let initialCardTop = 0;
+      let cardWidth = 0;
+      let cardHeight = 0;
 
       dragHandle.addEventListener('touchstart', (e) => {
         if (e.touches.length !== 1) return;
         isTouching = true;
         targetOverCard = null;
-        card.classList.add('is-dragging');
+        isTopTarget = false;
+
+        const touch = e.touches[0];
+        const rect = card.getBoundingClientRect();
+        touchOffsetY = touch.clientY - rect.top;
+        initialCardTop = rect.top;
+        cardWidth = rect.width;
+        cardHeight = rect.height;
+
+        card.classList.add('is-touch-floating');
+        card.style.position = 'fixed';
+        card.style.top = `${rect.top}px`;
+        card.style.left = `${rect.left}px`;
+        card.style.width = `${cardWidth}px`;
+        card.style.zIndex = '9999';
+
         if (e.cancelable) e.preventDefault();
       }, { passive: false });
 
       dragHandle.addEventListener('touchmove', (e) => {
         if (!isTouching || e.touches.length !== 1) return;
         if (e.cancelable) e.preventDefault();
-        const currentY = e.touches[0].clientY;
-        const currentX = e.touches[0].clientX;
-        
-        const allCards = Array.from(layerListContainer.querySelectorAll('.layer-card'));
+        const touch = e.touches[0];
+        const currentY = touch.clientY;
+
+        // 指に合わせてカード枠を追従移動
+        card.style.top = `${currentY - touchOffsetY}px`;
+
+        const allCards = Array.from(layerListContainer.querySelectorAll('.layer-card')).filter(c => c !== card);
         allCards.forEach(c => c.classList.remove('drag-over-top', 'drag-over-bottom'));
-        targetOverCard = null;
+
+        // 行き先判定：最も中心距離が近いカードを判定（広い判定）
+        let closestCard = null;
+        let minDistance = Infinity;
 
         for (let c of allCards) {
-          if (c === card) continue;
           const rect = c.getBoundingClientRect();
-          // X座標もカード幅周辺にあるか、またはY座標重視でチェック
-          if (currentY >= rect.top && currentY <= rect.bottom) {
-            targetOverCard = c;
-            const mid = rect.top + rect.height / 2;
-            if (currentY < mid) {
-              c.classList.add('drag-over-top');
-            } else {
-              c.classList.add('drag-over-bottom');
-            }
-            break;
+          const cardCenterY = rect.top + rect.height / 2;
+          const dist = Math.abs(currentY - cardCenterY);
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestCard = c;
           }
+        }
+
+        if (closestCard) {
+          targetOverCard = closestCard;
+          const rect = closestCard.getBoundingClientRect();
+          const cardCenterY = rect.top + rect.height / 2;
+          if (currentY < cardCenterY) {
+            closestCard.classList.add('drag-over-top');
+            isTopTarget = true;
+          } else {
+            closestCard.classList.add('drag-over-bottom');
+            isTopTarget = false;
+          }
+        } else {
+          targetOverCard = null;
         }
       }, { passive: false });
 
       const handleTouchEnd = (e) => {
         if (!isTouching) return;
         isTouching = false;
-        card.classList.remove('is-dragging');
 
-        const allCards = Array.from(layerListContainer.querySelectorAll('.layer-card'));
-        const overCard = targetOverCard;
-        targetOverCard = null;
+        card.classList.remove('is-touch-floating');
+        card.style.position = '';
+        card.style.top = '';
+        card.style.left = '';
+        card.style.width = '';
+        card.style.zIndex = '';
 
-        const isTop = overCard ? overCard.classList.contains('drag-over-top') : false;
+        const allCards = Array.from(layerListContainer.querySelectorAll('.layer-card')).filter(c => c !== card);
         allCards.forEach(c => c.classList.remove('drag-over-top', 'drag-over-bottom'));
 
-        if (overCard && overCard !== card) {
+        const overCard = targetOverCard;
+        const insertTop = isTopTarget;
+        targetOverCard = null;
+
+        if (overCard) {
           const fromIdx = index;
-          const toIdx = allCards.indexOf(overCard);
+          // 元の全カード順序からインデックス取得
+          const fullCards = Array.from(layerListContainer.querySelectorAll('.layer-card'));
+          const toIdx = fullCards.indexOf(overCard);
           if (toIdx !== -1) {
-            let finalIdx = isTop ? toIdx : toIdx + 1;
+            let finalIdx = insertTop ? toIdx : toIdx + 1;
             if (fromIdx < finalIdx) finalIdx--;
             if (fromIdx !== finalIdx && finalIdx >= 0 && finalIdx <= layers.length) {
               const [moved] = layers.splice(fromIdx, 1);
