@@ -842,8 +842,7 @@ canvas {
 /* スマホ表示 (画面幅800px以下 かつ force-pc がない時) または body.force-mobile の場合 */
 @media (max-width: 800px) {
   html, body:not(.force-pc) {
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: visible;
     height: auto;
     min-height: 100%;
   }
@@ -853,13 +852,15 @@ canvas {
     min-height: 100vh;
     max-height: none;
     overflow: visible;
+    padding-top: var(--mobile-preview-height, 42vh);
   }
   body:not(.force-pc) .preview-area {
     order: 1;
-    position: sticky;
-    position: -webkit-sticky;
+    position: fixed;
     top: 0;
-    z-index: 999;
+    left: 0;
+    right: 0;
+    z-index: 1000;
     width: 100%;
     min-height: auto;
     padding: 8px 10px;
@@ -885,7 +886,7 @@ canvas {
     overflow-y: visible !important;
   }
   body:not(.force-pc) .canvas-frame {
-    max-height: 32vh;
+    max-height: 30vh;
   }
   body:not(.force-pc) .footer-links {
     order: 3;
@@ -915,6 +916,8 @@ body.force-mobile .app-container {
   margin: 0 auto;
   border-left: 1px solid #2e2e3a;
   border-right: 1px solid #2e2e3a;
+  position: relative !important;
+  padding-top: var(--mobile-preview-height, 42vh);
 }
 @media (max-width: 480px) {
   body.force-mobile .app-container {
@@ -925,16 +928,25 @@ body.force-mobile .app-container {
 }
 body.force-mobile .preview-area {
   order: 1 !important;
-  position: sticky !important;
-  position: -webkit-sticky !important;
+  position: fixed !important;
   top: 0 !important;
-  z-index: 999 !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 1000 !important;
   width: 100% !important;
+  max-width: 480px;
   min-height: auto !important;
   padding: 8px 10px !important;
   background: #000000 !important;
   border-bottom: 2px solid #2e2e3a !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7) !important;
+}
+@media (max-width: 480px) {
+  body.force-mobile .preview-area {
+    left: 0 !important;
+    transform: none !important;
+    max-width: 100% !important;
+  }
 }
 body.force-mobile .stage-container {
   gap: 8px !important;
@@ -954,7 +966,7 @@ body.force-mobile .layer-list {
   overflow-y: visible !important;
 }
 body.force-mobile .canvas-frame {
-  max-height: 32vh !important;
+  max-height: 30vh !important;
 }
 body.force-mobile .footer-links {
   order: 3 !important;

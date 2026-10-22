@@ -1,5 +1,5 @@
 // Service Worker for PWA installation support
-const CACHE_NAME = 'video-editor-v4';
+const CACHE_NAME = 'video-editor-v5';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();

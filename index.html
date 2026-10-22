@@ -6,7 +6,7 @@
   <title>素人が作った編集アプリ</title>
   <meta name="theme-color" content="#1a1a22" />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=20261022_06" />
+  <link rel="stylesheet" href="style.css?v=20261022_07" />
 </head>
 <body>
   <div class="app-container">
@@ -167,13 +167,29 @@
 
     <!-- ページ全体の一番下の最終更新日時 -->
     <div class="footer-links">
-      <span class="build-timestamp">最終更新: 2026/10/22 21:20</span>
+      <span class="build-timestamp">最終更新: 2026/10/22 21:23</span>
     </div>
   </div>
 
   <script src="gifshot.min.js"></script>
-  <script src="main.js?v=20261020_04"></script>
+  <script src="main.js?v=20261022_01"></script>
   <script>
+    function updateMobilePreviewHeight() {
+      const preview = document.querySelector('.preview-area');
+      if (preview && (window.innerWidth <= 800 || document.body.classList.contains('force-mobile'))) {
+        const h = preview.offsetHeight;
+        if (h > 0) {
+          document.documentElement.style.setProperty('--mobile-preview-height', h + 'px');
+        }
+      }
+    }
+    window.addEventListener('resize', updateMobilePreviewHeight);
+    window.addEventListener('DOMContentLoaded', updateMobilePreviewHeight);
+    window.addEventListener('load', updateMobilePreviewHeight);
+    if ('ResizeObserver' in window) {
+      const p = document.querySelector('.preview-area');
+      if (p) new ResizeObserver(updateMobilePreviewHeight).observe(p);
+    }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(console.error);
     }
