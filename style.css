@@ -743,16 +743,14 @@ canvas {
   font-weight: 800;
 }
 
-/* ページの隅のリンク & 最終更新日時 & 画面表示切替 */
+/* ページの隅・最下部の最終更新日時 */
 .footer-links {
   position: absolute;
   bottom: 8px;
   right: 12px;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 8px;
   z-index: 100;
 }
 
@@ -863,8 +861,10 @@ canvas {
     max-height: 35vh;
   }
   body:not(.force-pc) .footer-links {
+    order: 3;
     position: static;
-    margin-top: 12px;
+    margin: 20px 0 12px 0;
+    width: 100%;
     justify-content: center;
   }
 }
@@ -914,8 +914,10 @@ body.force-mobile .canvas-frame {
   max-height: 35vh !important;
 }
 body.force-mobile .footer-links {
+  order: 3 !important;
   position: static !important;
-  margin-top: 12px !important;
+  margin: 20px 0 16px 0 !important;
+  width: 100% !important;
   justify-content: center !important;
 }
 
