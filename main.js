@@ -602,7 +602,6 @@ function renderAllLayerCards() {
     card.innerHTML = `
       <div class="layer-card-header">
         <div class="header-left">
-          <button type="button" class="btn white-fold-btn" id="fold_btn_${layer.id}">${foldText}</button>
           <input type="text" class="layer-name-input" id="name_input_${layer.id}" value="${layer.name}" title="クリックして名前を変更" />
           <span class="duration-badge">${durText}</span>
         </div>
@@ -610,6 +609,7 @@ function renderAllLayerCards() {
           <button type="button" class="btn white-icon-btn" data-action="up" title="背面へ (上へ)">▲</button>
           <button type="button" class="btn white-icon-btn" data-action="down" title="前面へ (下へ)">▼</button>
           <button type="button" class="btn white-icon-btn delete" data-action="delete" title="削除">✕</button>
+          <button type="button" class="btn white-fold-btn" id="fold_btn_${layer.id}">${foldText}</button>
         </div>
       </div>
 
