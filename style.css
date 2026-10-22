@@ -847,13 +847,25 @@ canvas {
   body:not(.force-pc) .app-container {
     flex-direction: column;
     height: auto;
+    min-height: 100vh;
     max-height: none;
-    overflow-y: auto;
+    overflow-y: visible;
   }
   body:not(.force-pc) .preview-area {
     order: 1;
-    min-height: 38vh;
-    padding: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    width: 100%;
+    min-height: auto;
+    padding: 8px 10px;
+    background: #000000;
+    border-bottom: 2px solid #2e2e3a;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7);
+  }
+  body:not(.force-pc) .stage-container {
+    gap: 8px;
+    width: 100%;
   }
   body:not(.force-pc) .sidebar {
     order: 2;
@@ -861,13 +873,14 @@ canvas {
     height: auto;
     max-height: none;
     border-right: none;
-    border-top: 2px solid #2e2e3a;
+    border-top: none;
   }
   body:not(.force-pc) .layer-list {
-    max-height: 50vh !important;
+    max-height: none !important;
+    overflow-y: visible;
   }
   body:not(.force-pc) .canvas-frame {
-    max-height: 35vh;
+    max-height: 32vh;
   }
   body:not(.force-pc) .footer-links {
     order: 3;
@@ -905,8 +918,19 @@ body.force-mobile .app-container {
 }
 body.force-mobile .preview-area {
   order: 1 !important;
-  min-height: 38vh !important;
-  padding: 10px !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
+  width: 100% !important;
+  min-height: auto !important;
+  padding: 8px 10px !important;
+  background: #000000 !important;
+  border-bottom: 2px solid #2e2e3a !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7) !important;
+}
+body.force-mobile .stage-container {
+  gap: 8px !important;
+  width: 100% !important;
 }
 body.force-mobile .sidebar {
   order: 2 !important;
@@ -914,13 +938,14 @@ body.force-mobile .sidebar {
   height: auto !important;
   max-height: none !important;
   border-right: none !important;
-  border-top: 2px solid #2e2e3a !important;
+  border-top: none !important;
 }
 body.force-mobile .layer-list {
-  max-height: 50vh !important;
+  max-height: none !important;
+  overflow-y: visible !important;
 }
 body.force-mobile .canvas-frame {
-  max-height: 35vh !important;
+  max-height: 32vh !important;
 }
 body.force-mobile .footer-links {
   order: 3 !important;
