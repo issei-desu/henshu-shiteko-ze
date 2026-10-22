@@ -602,12 +602,11 @@ function renderAllLayerCards() {
     card.innerHTML = `
       <div class="layer-card-header">
         <div class="header-left">
+          <span class="drag-handle" title="長押し・ドラッグで並び替え">☰</span>
           <input type="text" class="layer-name-input" id="name_input_${layer.id}" value="${layer.name}" title="クリックして名前を変更" />
           <span class="duration-badge">${durText}</span>
         </div>
         <div class="header-actions">
-          <button type="button" class="btn white-icon-btn" data-action="up" title="背面へ (上へ)">▲</button>
-          <button type="button" class="btn white-icon-btn" data-action="down" title="前面へ (下へ)">▼</button>
           <button type="button" class="btn white-icon-btn delete" data-action="delete" title="削除">✕</button>
           <button type="button" class="btn white-fold-btn" id="fold_btn_${layer.id}">${foldText}</button>
         </div>
@@ -680,31 +679,146 @@ function renderAllLayerCards() {
       triggerAutoSave();
     });
 
-    // 3. 順序入れ替え・削除ボタン
-    card.querySelectorAll('.header-actions button').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+    // 3. 削除ボタン
+    const deleteBtn = card.querySelector('.header-actions button[data-action="delete"]');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const action = btn.dataset.action;
-        if (action === 'up' && index > 0) {
-          [layers[index - 1], layers[index]] = [layers[index], layers[index - 1]];
-          renderAllLayerCards();
-          renderFrame();
-          triggerAutoSave();
-        } else if (action === 'down' && index < layers.length - 1) {
-          [layers[index + 1], layers[index]] = [layers[index], layers[index + 1]];
-          renderAllLayerCards();
-          renderFrame();
-          triggerAutoSave();
-        } else if (action === 'delete') {
-          deleteMediaBlob(layer.id);
-          layers = layers.filter(l => l.id !== layer.id);
-          renderAllLayerCards();
-          updateTimelineBounds();
-          renderFrame();
-          triggerAutoSave();
-        }
+        deleteMediaBlob(layer.id);
+        layers = layers.filter(l => l.id !== layer.id);
+        renderAllLayerCards();
+        updateTimelineBounds();
+        renderFrame();
+        triggerAutoSave();
       });
+    }
+
+    // 3.5 ドラッグ＆ドロップ（PCマウス & スマホタッチ両対応）
+    const dragHandle = card.querySelector('.drag-handle');
+    card.setAttribute('draggable', 'false'); // 初期はfalseにしてハンドル操作時のみドラッグ許可
+
+    if (dragHandle) {
+      dragHandle.addEventListener('mousedown', () => {
+        card.setAttribute('draggable', 'true');
+      });
+      dragHandle.addEventListener('mouseup', () => {
+        card.setAttribute('draggable', 'false');
+      });
+    }
+
+    card.addEventListener('dragstart', (e) => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', index.toString());
+      card.classList.add('is-dragging');
     });
+
+    card.addEventListener('dragend', () => {
+      card.setAttribute('draggable', 'false');
+      card.classList.remove('is-dragging');
+      document.querySelectorAll('.layer-card').forEach(c => c.classList.remove('drag-over-top', 'drag-over-bottom'));
+    });
+
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const rect = card.getBoundingClientRect();
+      const mid = rect.top + rect.height / 2;
+      if (e.clientY < mid) {
+        card.classList.add('drag-over-top');
+        card.classList.remove('drag-over-bottom');
+      } else {
+        card.classList.add('drag-over-bottom');
+        card.classList.remove('drag-over-top');
+      }
+    });
+
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.classList.remove('drag-over-top', 'drag-over-bottom');
+      const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      if (isNaN(fromIndex) || fromIndex === index) return;
+      const rect = card.getBoundingClientRect();
+      const mid = rect.top + rect.height / 2;
+      let targetIndex = e.clientY < mid ? index : index + 1;
+      if (fromIndex < targetIndex) targetIndex--;
+      if (fromIndex !== targetIndex) {
+        const [movedLayer] = layers.splice(fromIndex, 1);
+        layers.splice(targetIndex, 0, movedLayer);
+        renderAllLayerCards();
+        renderFrame();
+        triggerAutoSave();
+      }
+    });
+
+    // スマホ・タッチ操作でのドラッグ並び替え (Touch Events)
+    if (dragHandle) {
+      let touchStartY = 0;
+      let isTouching = false;
+      let clonedGhost = null;
+
+      dragHandle.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        isTouching = true;
+        touchStartY = e.touches[0].clientY;
+        card.classList.add('is-dragging');
+      }, { passive: true });
+
+      dragHandle.addEventListener('touchmove', (e) => {
+        if (!isTouching || e.touches.length !== 1) return;
+        const currentY = e.touches[0].clientY;
+        
+        // 移動中の対象カード判定
+        const allCards = Array.from(layerListContainer.querySelectorAll('.layer-card'));
+        allCards.forEach(c => c.classList.remove('drag-over-top', 'drag-over-bottom'));
+
+        for (let c of allCards) {
+          if (c === card) continue;
+          const rect = c.getBoundingClientRect();
+          if (currentY >= rect.top && currentY <= rect.bottom) {
+            const mid = rect.top + rect.height / 2;
+            if (currentY < mid) {
+              c.classList.add('drag-over-top');
+            } else {
+              c.classList.add('drag-over-bottom');
+            }
+            break;
+          }
+        }
+      }, { passive: true });
+
+      const handleTouchEnd = (e) => {
+        if (!isTouching) return;
+        isTouching = false;
+        card.classList.remove('is-dragging');
+
+        const allCards = Array.from(layerListContainer.querySelectorAll('.layer-card'));
+        const targetOverCard = allCards.find(c => c.classList.contains('drag-over-top') || c.classList.contains('drag-over-bottom'));
+
+        allCards.forEach(c => c.classList.remove('drag-over-top', 'drag-over-bottom'));
+
+        if (targetOverCard && targetOverCard !== card) {
+          const fromIdx = index;
+          const toIdx = allCards.indexOf(targetOverCard);
+          const isTop = targetOverCard.classList.contains('drag-over-top');
+          let finalIdx = isTop ? toIdx : toIdx + 1;
+          if (fromIdx < finalIdx) finalIdx--;
+          if (fromIdx !== finalIdx && finalIdx >= 0 && finalIdx <= layers.length) {
+            const [moved] = layers.splice(fromIdx, 1);
+            layers.splice(finalIdx, 0, moved);
+            renderAllLayerCards();
+            renderFrame();
+            triggerAutoSave();
+          }
+        }
+      };
+
+      dragHandle.addEventListener('touchend', handleTouchEnd);
+      dragHandle.addEventListener('touchcancel', handleTouchEnd);
+    }
 
     // 4. 入力変更イベント
     card.querySelectorAll('.layer-card-body input, .layer-card-body textarea').forEach(input => {
