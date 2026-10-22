@@ -6,7 +6,7 @@
   <title>素人が作った編集アプリ</title>
   <meta name="theme-color" content="#1a1a22" />
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css?v=20261022_03" />
+  <link rel="stylesheet" href="style.css?v=20261022_04" />
 </head>
 <body>
   <div class="app-container">
@@ -139,10 +139,12 @@
           <canvas id="previewCanvas" width="1920" height="1080"></canvas>
         </div>
 
-        <!-- プレビュー直下のシークバー＆タイム表示 -->
+        <!-- プレビュー直下のシークバー＆タイム表示（上段: 再生＋バー / 下段: 秒数表示） -->
         <div class="timeline-bar-area">
-          <button id="playBtn" type="button" class="btn white-mini-btn">再生</button>
-          <input type="range" id="timeSeeker" min="0" max="10" step="0.05" value="0" />
+          <div class="timeline-top-row">
+            <button id="playBtn" type="button" class="btn white-mini-btn">再生</button>
+            <input type="range" id="timeSeeker" min="0" max="10" step="0.05" value="0" />
+          </div>
           <div class="time-display">
             <span id="currentTimeDisplay">00:00.00</span> / <span id="maxTimeDisplay">00:10.00</span>
           </div>

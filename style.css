@@ -711,12 +711,20 @@ canvas {
 .timeline-bar-area {
   width: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
   background: #181822;
   padding: 10px 18px;
   border-radius: 8px;
   border: 2px solid #333345;
+}
+
+.timeline-top-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
 .white-mini-btn {
@@ -726,7 +734,7 @@ canvas {
   white-space: nowrap;
 }
 
-.timeline-bar-area input[type="range"] {
+.timeline-top-row input[type="range"] {
   flex: 1;
   accent-color: #ffffff;
   cursor: pointer;
@@ -737,6 +745,7 @@ canvas {
   font-size: 0.9rem;
   color: #d0d0e0;
   white-space: nowrap;
+  letter-spacing: 0.5px;
 }
 .time-display span#currentTimeDisplay {
   color: #00f0ff;
