@@ -841,21 +841,25 @@ canvas {
 
 /* スマホ表示 (画面幅800px以下 かつ force-pc がない時) または body.force-mobile の場合 */
 @media (max-width: 800px) {
-  body:not(.force-pc) {
+  html, body:not(.force-pc) {
+    overflow-x: hidden;
     overflow-y: auto;
+    height: auto;
+    min-height: 100%;
   }
   body:not(.force-pc) .app-container {
     flex-direction: column;
     height: auto;
     min-height: 100vh;
     max-height: none;
-    overflow-y: visible;
+    overflow: visible;
   }
   body:not(.force-pc) .preview-area {
     order: 1;
     position: sticky;
+    position: -webkit-sticky;
     top: 0;
-    z-index: 100;
+    z-index: 999;
     width: 100%;
     min-height: auto;
     padding: 8px 10px;
@@ -874,10 +878,11 @@ canvas {
     max-height: none;
     border-right: none;
     border-top: none;
+    overflow: visible;
   }
   body:not(.force-pc) .layer-list {
     max-height: none !important;
-    overflow-y: visible;
+    overflow-y: visible !important;
   }
   body:not(.force-pc) .canvas-frame {
     max-height: 32vh;
@@ -892,17 +897,19 @@ canvas {
 }
 
 /* スマホレイアウト強制 (大画面でもスマホ縦並び表示) */
+html:has(body.force-mobile),
 body.force-mobile {
   overflow-y: auto !important;
   overflow-x: hidden !important;
+  height: auto !important;
+  min-height: 100% !important;
 }
 body.force-mobile .app-container {
   flex-direction: column !important;
   height: auto !important;
   min-height: 100vh !important;
   max-height: none !important;
-  overflow-y: visible !important;
-  overflow-x: hidden !important;
+  overflow: visible !important;
   width: 100% !important;
   max-width: 480px;
   margin: 0 auto;
@@ -919,8 +926,9 @@ body.force-mobile .app-container {
 body.force-mobile .preview-area {
   order: 1 !important;
   position: sticky !important;
+  position: -webkit-sticky !important;
   top: 0 !important;
-  z-index: 100 !important;
+  z-index: 999 !important;
   width: 100% !important;
   min-height: auto !important;
   padding: 8px 10px !important;
@@ -939,6 +947,7 @@ body.force-mobile .sidebar {
   max-height: none !important;
   border-right: none !important;
   border-top: none !important;
+  overflow: visible !important;
 }
 body.force-mobile .layer-list {
   max-height: none !important;
