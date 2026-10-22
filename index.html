@@ -43,12 +43,24 @@
       <!-- 下部アクションバー (動画枠サイズ & 保存トリガーボタン) -->
       <div class="export-panel">
         <div class="aspect-control">
-          <label for="aspectSelect">動画枠サイズ (アスペクト比):</label>
+          <label for="aspectSelect">画面・動画枠サイズ (アスペクト比):</label>
           <select id="aspectSelect">
-            <option value="1920x1080">16:9 (横動画 / YouTube 1920x1080)</option>
-            <option value="1080x1920">9:16 (縦動画 / Shorts, TikTok 1080x1920)</option>
-            <option value="1080x1080">1:1 (正方形 / Instagram 1080x1080)</option>
-            <option value="1440x1080">4:3 (スタンダード 1440x1080)</option>
+            <optgroup label="動画・SNS向け">
+              <option value="1920x1080">16:9 (横動画 / YouTube 1920x1080)</option>
+              <option value="1080x1920">9:16 (縦動画 / Shorts, TikTok 1080x1920)</option>
+              <option value="1080x1080">1:1 (正方形 / Instagram 1080x1080)</option>
+              <option value="1440x1080">4:3 (スタンダード 1440x1080)</option>
+            </optgroup>
+            <optgroup label="コピー用紙・印刷サイズ">
+              <option value="1754x1240">A4 横 (コピー用紙 1754x1240)</option>
+              <option value="1240x1754">A4 縦 (コピー用紙 1240x1754)</option>
+              <option value="1240x877">A5 横 (小型コピー用紙 1240x877)</option>
+              <option value="877x1240">A5 縦 (小型コピー用紙 877x1240)</option>
+              <option value="2480x1754">A3 横 (大型コピー用紙 2480x1754)</option>
+              <option value="1754x2480">A3 縦 (大型コピー用紙 1754x2480)</option>
+              <option value="1500x1060">B5 横 (ノート・用紙 1500x1060)</option>
+              <option value="1060x1500">B5 縦 (ノート・用紙 1060x1500)</option>
+            </optgroup>
           </select>
         </div>
 
