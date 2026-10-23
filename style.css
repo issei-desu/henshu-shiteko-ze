@@ -357,6 +357,27 @@ html, body {
   accent-color: #ffffff;
 }
 
+/* スライダーと数値入力の横並び */
+.slider-num-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.slider-num-wrap .sync-slider {
+  flex: 1;
+  min-width: 0;
+}
+
+.slider-num-wrap .sync-number {
+  width: 58px;
+  padding: 3px 4px !important;
+  font-size: 0.8rem !important;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 .control-full {
   display: flex;
   flex-direction: column;

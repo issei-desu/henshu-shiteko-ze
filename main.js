@@ -523,10 +523,16 @@ function renderAllLayerCards() {
 
         <div class="control-row">
           <label>位置 X (%):
-            <input type="range" min="-100" max="100" value="${layer.x}" data-prop="x" />
+            <div class="slider-num-wrap">
+              <input type="range" min="-100" max="100" value="${layer.x}" data-prop="x" class="sync-slider" />
+              <input type="number" min="-100" max="100" step="1" value="${layer.x}" data-prop="x" class="sync-number" />
+            </div>
           </label>
           <label>位置 Y (% 上下):
-            <input type="range" min="-100" max="100" value="${layer.y}" data-prop="y" />
+            <div class="slider-num-wrap">
+              <input type="range" min="-100" max="100" value="${layer.y}" data-prop="y" class="sync-slider" />
+              <input type="number" min="-100" max="100" step="1" value="${layer.y}" data-prop="y" class="sync-number" />
+            </div>
           </label>
         </div>
 
@@ -535,7 +541,10 @@ function renderAllLayerCards() {
             <input type="range" min="16" max="150" step="1" value="${layer.fontSize || 60}" data-prop="fontSize" />
           </label>
           <label>拡大率:
-            <input type="range" min="0.1" max="3.0" step="0.05" value="${layer.scale}" data-prop="scale" />
+            <div class="slider-num-wrap">
+              <input type="range" min="0.1" max="3.0" step="0.05" value="${layer.scale}" data-prop="scale" class="sync-slider" />
+              <input type="number" min="0.1" max="10.0" step="0.05" value="${layer.scale}" data-prop="scale" class="sync-number" />
+            </div>
           </label>
         </div>
 
@@ -569,16 +578,25 @@ function renderAllLayerCards() {
 
         <div class="control-row">
           <label>位置 X (%):
-            <input type="range" min="-100" max="100" value="${layer.x}" data-prop="x" />
+            <div class="slider-num-wrap">
+              <input type="range" min="-100" max="100" value="${layer.x}" data-prop="x" class="sync-slider" />
+              <input type="number" min="-100" max="100" step="1" value="${layer.x}" data-prop="x" class="sync-number" />
+            </div>
           </label>
           <label>位置 Y (% 上下):
-            <input type="range" min="-100" max="100" value="${layer.y}" data-prop="y" />
+            <div class="slider-num-wrap">
+              <input type="range" min="-100" max="100" value="${layer.y}" data-prop="y" class="sync-slider" />
+              <input type="number" min="-100" max="100" step="1" value="${layer.y}" data-prop="y" class="sync-number" />
+            </div>
           </label>
         </div>
 
         <div class="control-row">
           <label>拡大率:
-            <input type="range" min="0.1" max="3.0" step="0.05" value="${layer.scale}" data-prop="scale" />
+            <div class="slider-num-wrap">
+              <input type="range" min="0.1" max="3.0" step="0.05" value="${layer.scale}" data-prop="scale" class="sync-slider" />
+              <input type="number" min="0.1" max="10.0" step="0.05" value="${layer.scale}" data-prop="scale" class="sync-number" />
+            </div>
           </label>
           <div class="chroma-toggle">
             <input type="checkbox" id="ck_${layer.id}" data-prop="chromaEnabled" ${layer.chromaEnabled ? 'checked' : ''} />
@@ -865,11 +883,12 @@ function renderAllLayerCards() {
       dragHandle.addEventListener('touchcancel', handleTouchEnd);
     }
 
-    // 4. 入力変更イベント
+    // 4. 入力変更イベント（スライダーと数値入力の双方向同期含む）
     card.querySelectorAll('.layer-card-body input, .layer-card-body textarea').forEach(input => {
       input.addEventListener('input', (e) => {
         const prop = e.target.dataset.prop;
         if (!prop) return;
+
         if (e.target.type === 'checkbox') {
           layer[prop] = e.target.checked;
           const chromaBox = card.querySelector(`#chroma_box_${layer.id}`);
@@ -877,7 +896,19 @@ function renderAllLayerCards() {
         } else if (e.target.type === 'color' || e.target.tagName === 'TEXTAREA') {
           layer[prop] = e.target.value;
         } else {
-          layer[prop] = parseFloat(e.target.value);
+          const val = parseFloat(e.target.value);
+          layer[prop] = isNaN(val) ? 0 : val;
+
+          // スライダーと数値入力欄の双方向同期
+          const partner = card.querySelector(
+            e.target.classList.contains('sync-slider')
+              ? `.sync-number[data-prop="${prop}"]`
+              : `.sync-slider[data-prop="${prop}"]`
+          );
+          if (partner && partner !== e.target) {
+            partner.value = e.target.value;
+          }
+
           if (prop === 'endTime' || prop === 'startTime') {
             updateTimelineBounds();
           }
