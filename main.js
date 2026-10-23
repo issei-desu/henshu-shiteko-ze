@@ -797,20 +797,25 @@ function renderAllLayerCards() {
         // 指に合わせてカード枠を遅延なく即時追従
         card.style.top = `${currentY - touchOffsetY}px`;
 
-        // プレースホルダー以外の他カードと位置を比較し、リアルタイムに入れ替え
-        const siblings = Array.from(layerListContainer.querySelectorAll('.layer-card')).filter(c => c !== card && c !== placeholder);
+        if (!placeholder || !placeholder.parentNode) return;
+
+        // 現在のカード一覧（操作中のcardとplaceholderを除外した実体カード）
+        const allChildren = Array.from(layerListContainer.children);
+        const placeholderIdx = allChildren.indexOf(placeholder);
+        const siblings = allChildren.filter(c => c !== card && c !== placeholder && c.classList.contains('layer-card'));
 
         for (let sibling of siblings) {
           const rect = sibling.getBoundingClientRect();
           const siblingCenterY = rect.top + rect.height / 2;
+          const siblingIdx = allChildren.indexOf(sibling);
 
-          // 指がカードの中心を上下に超えたらプレースホルダーを動かして隙間を移動
-          if (currentY > siblingCenterY && placeholder.compareDocumentPosition(sibling) & Node.DOCUMENT_POSITION_PRECEDING) {
-            // 下方向へ移動
+          // 下方向に移動：指が下のカードの中心を超えた時、placeholderをそのカードの直後に移動
+          if (currentY > siblingCenterY && placeholderIdx < siblingIdx) {
             sibling.after(placeholder);
             break;
-          } else if (currentY < siblingCenterY && placeholder.compareDocumentPosition(sibling) & Node.DOCUMENT_POSITION_FOLLOWING) {
-            // 上方向へ移動
+          }
+          // 上方向に移動：指が上のカードの中心を超えた時、placeholderをそのカードの直前に移動
+          else if (currentY < siblingCenterY && placeholderIdx > siblingIdx) {
             sibling.before(placeholder);
             break;
           }
