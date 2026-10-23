@@ -261,9 +261,14 @@ html, body {
 }
 
 .white-fold-btn {
-  padding: 4px 8px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   border-radius: 4px;
-  font-size: 0.75rem;
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   white-space: nowrap;
 }
 

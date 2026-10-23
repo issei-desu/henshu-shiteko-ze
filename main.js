@@ -479,7 +479,7 @@ function renderAllLayerCards() {
     } else if (layer.type === 'text') {
       durText = `${layer.duration.toFixed(1)}s (テキスト)`;
     }
-    const foldText = layer.collapsed ? '開く ▼' : '閉じる ▲';
+    const foldText = layer.collapsed ? '開' : '閉';
 
     let relinkHTML = '';
     if (layer.type !== 'text') {
@@ -664,10 +664,10 @@ function renderAllLayerCards() {
       layer.collapsed = !layer.collapsed;
       if (layer.collapsed) {
         cardBody.style.display = 'none';
-        foldBtn.textContent = '開く ▼';
+        foldBtn.textContent = '開';
       } else {
         cardBody.style.display = 'flex';
-        foldBtn.textContent = '閉じる ▲';
+        foldBtn.textContent = '閉';
       }
       triggerAutoSave();
     });
