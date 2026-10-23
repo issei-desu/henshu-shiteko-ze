@@ -186,7 +186,7 @@ html, body {
   overflow: hidden;
   flex-shrink: 0;
   position: relative;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .layer-card.is-dragging {
@@ -196,12 +196,21 @@ html, body {
 }
 
 .layer-card.is-touch-floating {
-  opacity: 0.92 !important;
+  opacity: 0.95 !important;
   z-index: 9999 !important;
-  box-shadow: 0 12px 28px rgba(0, 240, 255, 0.5), 0 4px 14px rgba(0,0,0,0.8) !important;
+  box-shadow: 0 14px 30px rgba(0, 240, 255, 0.5), 0 6px 16px rgba(0,0,0,0.85) !important;
   border-color: #00f0ff !important;
   pointer-events: none !important;
-  transform: scale(1.03);
+  transform: scale(1.02);
+  transition: none !important; /* ドラッグ中は指に遅延なく即時追従 */
+}
+
+.layer-card.drag-placeholder {
+  opacity: 0.3 !important;
+  border: 2px dashed #00f0ff !important;
+  background: #181824 !important;
+  box-shadow: none !important;
+  pointer-events: none !important;
 }
 
 .layer-card.drag-over-top {

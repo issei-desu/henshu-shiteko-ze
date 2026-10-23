@@ -750,29 +750,34 @@ function renderAllLayerCards() {
       }
     });
 
-    // スマホ・タッチ操作でのドラッグ並び替え (Touch Events)
+    // スマホ・タッチ操作でのリアルタイム並び替え (Touch Events)
     if (dragHandle) {
       let isTouching = false;
-      let targetOverCard = null;
-      let isTopTarget = false;
+      let placeholder = null;
       let touchOffsetY = 0;
-      let initialCardTop = 0;
       let cardWidth = 0;
       let cardHeight = 0;
+      let currentIndex = index;
 
       dragHandle.addEventListener('touchstart', (e) => {
         if (e.touches.length !== 1) return;
         isTouching = true;
-        targetOverCard = null;
-        isTopTarget = false;
+        currentIndex = layers.findIndex(l => l.id === layer.id);
 
         const touch = e.touches[0];
         const rect = card.getBoundingClientRect();
         touchOffsetY = touch.clientY - rect.top;
-        initialCardTop = rect.top;
         cardWidth = rect.width;
         cardHeight = rect.height;
 
+        // プレースホルダー（隙間）を作成して元の場所に挿入
+        placeholder = document.createElement('div');
+        placeholder.className = 'layer-card drag-placeholder';
+        placeholder.style.height = `${cardHeight}px`;
+        placeholder.style.width = `${cardWidth}px`;
+        card.parentNode.insertBefore(placeholder, card);
+
+        // 操作カードをフローティング化
         card.classList.add('is-touch-floating');
         card.style.position = 'fixed';
         card.style.top = `${rect.top}px`;
@@ -789,39 +794,26 @@ function renderAllLayerCards() {
         const touch = e.touches[0];
         const currentY = touch.clientY;
 
-        // 指に合わせてカード枠を追従移動
+        // 指に合わせてカード枠を遅延なく即時追従
         card.style.top = `${currentY - touchOffsetY}px`;
 
-        const allCards = Array.from(layerListContainer.querySelectorAll('.layer-card')).filter(c => c !== card);
-        allCards.forEach(c => c.classList.remove('drag-over-top', 'drag-over-bottom'));
+        // プレースホルダー以外の他カードと位置を比較し、リアルタイムに入れ替え
+        const siblings = Array.from(layerListContainer.querySelectorAll('.layer-card')).filter(c => c !== card && c !== placeholder);
 
-        // 行き先判定：最も中心距離が近いカードを判定（広い判定）
-        let closestCard = null;
-        let minDistance = Infinity;
+        for (let sibling of siblings) {
+          const rect = sibling.getBoundingClientRect();
+          const siblingCenterY = rect.top + rect.height / 2;
 
-        for (let c of allCards) {
-          const rect = c.getBoundingClientRect();
-          const cardCenterY = rect.top + rect.height / 2;
-          const dist = Math.abs(currentY - cardCenterY);
-          if (dist < minDistance) {
-            minDistance = dist;
-            closestCard = c;
+          // 指がカードの中心を上下に超えたらプレースホルダーを動かして隙間を移動
+          if (currentY > siblingCenterY && placeholder.compareDocumentPosition(sibling) & Node.DOCUMENT_POSITION_PRECEDING) {
+            // 下方向へ移動
+            sibling.after(placeholder);
+            break;
+          } else if (currentY < siblingCenterY && placeholder.compareDocumentPosition(sibling) & Node.DOCUMENT_POSITION_FOLLOWING) {
+            // 上方向へ移動
+            sibling.before(placeholder);
+            break;
           }
-        }
-
-        if (closestCard) {
-          targetOverCard = closestCard;
-          const rect = closestCard.getBoundingClientRect();
-          const cardCenterY = rect.top + rect.height / 2;
-          if (currentY < cardCenterY) {
-            closestCard.classList.add('drag-over-top');
-            isTopTarget = true;
-          } else {
-            closestCard.classList.add('drag-over-bottom');
-            isTopTarget = false;
-          }
-        } else {
-          targetOverCard = null;
         }
       }, { passive: false });
 
@@ -829,36 +821,38 @@ function renderAllLayerCards() {
         if (!isTouching) return;
         isTouching = false;
 
-        card.classList.remove('is-touch-floating');
-        card.style.position = '';
-        card.style.top = '';
-        card.style.left = '';
-        card.style.width = '';
-        card.style.zIndex = '';
+        // プレースホルダーの位置にカードを戻す
+        if (placeholder && placeholder.parentNode) {
+          // 現在のDOM上の並び順から新しいインデックスを特定
+          const currentNodes = Array.from(layerListContainer.children);
+          const newIdx = currentNodes.indexOf(placeholder);
 
-        const allCards = Array.from(layerListContainer.querySelectorAll('.layer-card')).filter(c => c !== card);
-        allCards.forEach(c => c.classList.remove('drag-over-top', 'drag-over-bottom'));
+          placeholder.parentNode.insertBefore(card, placeholder);
+          placeholder.remove();
+          placeholder = null;
 
-        const overCard = targetOverCard;
-        const insertTop = isTopTarget;
-        targetOverCard = null;
+          card.classList.remove('is-touch-floating');
+          card.style.position = '';
+          card.style.top = '';
+          card.style.left = '';
+          card.style.width = '';
+          card.style.zIndex = '';
 
-        if (overCard) {
-          const fromIdx = index;
-          // 元の全カード順序からインデックス取得
-          const fullCards = Array.from(layerListContainer.querySelectorAll('.layer-card'));
-          const toIdx = fullCards.indexOf(overCard);
-          if (toIdx !== -1) {
-            let finalIdx = insertTop ? toIdx : toIdx + 1;
-            if (fromIdx < finalIdx) finalIdx--;
-            if (fromIdx !== finalIdx && finalIdx >= 0 && finalIdx <= layers.length) {
-              const [moved] = layers.splice(fromIdx, 1);
-              layers.splice(finalIdx, 0, moved);
-              renderAllLayerCards();
-              renderFrame();
-              triggerAutoSave();
-            }
+          const oldIdx = layers.findIndex(l => l.id === layer.id);
+          if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+            const [moved] = layers.splice(oldIdx, 1);
+            layers.splice(newIdx, 0, moved);
+            renderAllLayerCards();
+            renderFrame();
+            triggerAutoSave();
           }
+        } else {
+          card.classList.remove('is-touch-floating');
+          card.style.position = '';
+          card.style.top = '';
+          card.style.left = '';
+          card.style.width = '';
+          card.style.zIndex = '';
         }
       };
 
