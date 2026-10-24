@@ -81,6 +81,50 @@ let lastExportedBlob = null;
 let lastExportedUrl = null;
 
 // ========================================================
+// 音声管理 (Web Audio API)
+// ========================================================
+let audioCtx = null;
+let audioDestNode = null;
+
+function getAudioContext() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      audioCtx = new AudioContextClass();
+      audioDestNode = audioCtx.createMediaStreamDestination();
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+  return audioCtx;
+}
+
+function connectLayerAudio(layer) {
+  if (layer.type !== 'video' || !layer.element) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  if (!layer.audioSource) {
+    try {
+      layer.audioSource = ctx.createMediaElementSource(layer.element);
+      layer.gainNode = ctx.createGain();
+      layer.gainNode.gain.value = (layer.volume !== undefined ? layer.volume : 1.0);
+
+      layer.audioSource.connect(layer.gainNode);
+      // スピーカー出力（プレビュー再生用）
+      layer.gainNode.connect(ctx.destination);
+      // 録画ストリーム用（保存時音声合成用）
+      if (audioDestNode) {
+        layer.gainNode.connect(audioDestNode);
+      }
+    } catch (e) {
+      console.warn('Audio connection error:', e);
+    }
+  }
+}
+
+// ========================================================
 // 超軽量・容量ゼロの保存・復元システム (localStorage / JSON) & IndexedDB メディアストレージ
 // ========================================================
 const STORAGE_KEY = 'chroma_video_editor_autosave_v1';
@@ -201,6 +245,9 @@ function getProjectData() {
         base.chromaEnabled = l.chromaEnabled;
         base.chromaThreshold = l.chromaThreshold;
         base.minGreen = l.minGreen;
+        if (l.type === 'video') {
+          base.volume = (l.volume !== undefined ? l.volume : 1.0);
+        }
       }
       return base;
     })
@@ -289,13 +336,14 @@ async function loadProject(project) {
           const video = document.createElement('video');
           video.src = url;
           video.loop = true;
-          video.muted = true;
           video.playsInline = true;
+          video.crossOrigin = 'anonymous';
           video.onloadedmetadata = () => {
             layer.element = video;
             layer.ready = true;
             layer.isLoadingMedia = false;
             layer.needsRelink = false;
+            connectLayerAudio(layer);
             updateTimelineBounds();
             renderAllLayerCards();
             renderFrame();
@@ -391,6 +439,7 @@ assetInput.addEventListener('change', (e) => {
       x: 0,
       y: 0,
       scale: 1.0,
+      volume: 1.0,
       startTime: 0,
       endTime: 5,
       chromaEnabled: false,
@@ -402,14 +451,15 @@ assetInput.addEventListener('change', (e) => {
     if (isVideo) {
       layer.element.src = url;
       layer.element.loop = true;
-      layer.element.muted = true;
       layer.element.playsInline = true;
+      layer.element.crossOrigin = 'anonymous';
       layer.element.onloadedmetadata = () => {
         layer.ready = true;
         const dur = layer.element.duration || 10;
         layer.duration = dur;
         layer.startTime = 0;
         layer.endTime = parseFloat(dur.toFixed(2));
+        connectLayerAudio(layer);
         updateTimelineBounds();
         renderAllLayerCards();
         renderFrame();
@@ -598,11 +648,30 @@ function renderAllLayerCards() {
               <input type="number" min="0.1" max="10.0" step="0.05" value="${layer.scale}" data-prop="scale" class="sync-number" />
             </div>
           </label>
+          ${layer.type === 'video' ? `
+          <label>音量 (%):
+            <div class="slider-num-wrap">
+              <input type="range" min="0" max="1" step="0.05" value="${layer.volume !== undefined ? layer.volume : 1}" data-prop="volume" class="sync-slider" />
+              <input type="number" min="0" max="100" step="5" value="${Math.round((layer.volume !== undefined ? layer.volume : 1) * 100)}" data-prop="volume-percent" class="sync-number" />
+            </div>
+          </label>
+          ` : `
           <div class="chroma-toggle">
             <input type="checkbox" id="ck_${layer.id}" data-prop="chromaEnabled" ${layer.chromaEnabled ? 'checked' : ''} />
             <label for="ck_${layer.id}">グリーンバック透過</label>
           </div>
+          `}
         </div>
+
+        ${layer.type === 'video' ? `
+        <div class="control-row">
+          <div class="chroma-toggle">
+            <input type="checkbox" id="ck_${layer.id}" data-prop="chromaEnabled" ${layer.chromaEnabled ? 'checked' : ''} />
+            <label for="ck_${layer.id}">グリーンバック透過</label>
+          </div>
+          <div></div>
+        </div>
+        ` : ''}
 
         <div class="chroma-controls" id="chroma_box_${layer.id}" style="display: ${layer.chromaEnabled ? 'block' : 'none'};">
           <div class="control-row">
@@ -650,11 +719,12 @@ function renderAllLayerCards() {
           layer.element = document.createElement('video');
           layer.element.src = url;
           layer.element.loop = true;
-          layer.element.muted = true;
           layer.element.playsInline = true;
+          layer.element.crossOrigin = 'anonymous';
           layer.element.onloadedmetadata = () => {
             layer.ready = true;
             layer.needsRelink = false;
+            connectLayerAudio(layer);
             renderAllLayerCards();
             renderFrame();
             triggerAutoSave();
@@ -895,6 +965,22 @@ function renderAllLayerCards() {
           if (chromaBox) chromaBox.style.display = e.target.checked ? 'block' : 'none';
         } else if (e.target.type === 'color' || e.target.tagName === 'TEXTAREA') {
           layer[prop] = e.target.value;
+        } else if (prop === 'volume' || prop === 'volume-percent') {
+          let vol = 1.0;
+          if (prop === 'volume') {
+            vol = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0));
+            const numPartner = card.querySelector(`.sync-number[data-prop="volume-percent"]`);
+            if (numPartner) numPartner.value = Math.round(vol * 100);
+          } else {
+            const pct = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
+            vol = pct / 100;
+            const sliderPartner = card.querySelector(`.sync-slider[data-prop="volume"]`);
+            if (sliderPartner) sliderPartner.value = vol;
+          }
+          layer.volume = vol;
+          if (layer.gainNode) {
+            layer.gainNode.gain.value = vol;
+          }
         } else {
           const val = parseFloat(e.target.value);
           layer[prop] = isNaN(val) ? 0 : val;
@@ -927,8 +1013,18 @@ playBtn.addEventListener('click', () => {
   isPlaying = !isPlaying;
   playBtn.textContent = isPlaying ? '一時停止' : '再生';
   if (isPlaying) {
+    getAudioContext();
+    layers.forEach(l => {
+      if (l.type === 'video') connectLayerAudio(l);
+    });
     lastTimestamp = performance.now();
     requestAnimationFrame(animationLoop);
+  } else {
+    layers.forEach(l => {
+      if (l.type === 'video' && l.element && !l.element.paused) {
+        l.element.pause();
+      }
+    });
   }
 });
 
@@ -1207,8 +1303,22 @@ async function exportInstantVideo(startTime, endTime, ext, mimeType) {
   }
   const savedCurrentTime = currentTime;
 
+  // 音声コンテキストの初期化＆レイヤー接続
+  getAudioContext();
+  layers.forEach(l => {
+    if (l.type === 'video') connectLayerAudio(l);
+  });
+
   // MediaRecorder でストリームをキャプチャ
   const stream = canvas.captureStream(fps);
+
+  // 音声トラックをストリームに合成
+  if (audioDestNode && audioDestNode.stream) {
+    const audioTracks = audioDestNode.stream.getAudioTracks();
+    audioTracks.forEach(track => {
+      stream.addTrack(track);
+    });
+  }
   let options = mimeType ? { mimeType } : {};
   let chunks = [];
   let recorder;
@@ -1695,7 +1805,21 @@ function startExport() {
   currentTimeDisplay.textContent = formatTime(sTime);
   syncVideosToTime();
 
+  // 音声コンテキストの初期化＆レイヤー接続
+  getAudioContext();
+  layers.forEach(l => {
+    if (l.type === 'video') connectLayerAudio(l);
+  });
+
   const stream = canvas.captureStream(30);
+
+  // 音声トラックをストリームに合成
+  if (audioDestNode && audioDestNode.stream) {
+    const audioTracks = audioDestNode.stream.getAudioTracks();
+    audioTracks.forEach(track => {
+      stream.addTrack(track);
+    });
+  }
 
   let options = mimeType ? { mimeType } : {};
   recordedChunks = [];
