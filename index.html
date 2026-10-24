@@ -103,6 +103,15 @@
             </select>
           </div>
 
+          <div class="format-control" id="fpsControlArea">
+            <label for="fpsSelect">フレームレート (FPS):</label>
+            <select id="fpsSelect">
+              <option value="60" selected>60 fps (推奨・極めて滑らか)</option>
+              <option value="120">120 fps (超ヌルヌル・ハイフレーム)</option>
+              <option value="30">30 fps (軽量・標準)</option>
+            </select>
+          </div>
+
           <!-- 保存方法（3つのモード切替） -->
           <div class="export-mode-control" id="modeControlArea">
             <label>保存方法 (モード):</label>
@@ -167,12 +176,12 @@
 
     <!-- ページ全体の一番下の最終更新日時 -->
     <div class="footer-links">
-      <span class="build-timestamp">最終更新: 2026/10/24 18:52</span>
+      <span class="build-timestamp">最終更新: 2026/10/24 18:57</span>
     </div>
   </div>
 
   <script src="gifshot.min.js"></script>
-  <script src="main.js?v=20261024_03"></script>
+  <script src="main.js?v=20261024_04"></script>
   <script>
     function updateMobilePreviewHeight() {
       const preview = document.querySelector('.preview-area');

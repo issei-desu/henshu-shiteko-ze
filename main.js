@@ -6,6 +6,8 @@ const ctx = canvas.getContext('2d');
 const canvasFrame = document.getElementById('canvasFrame');
 const aspectSelect = document.getElementById('aspectSelect');
 const formatSelect = document.getElementById('formatSelect');
+const fpsSelect = document.getElementById('fpsSelect');
+const fpsControlArea = document.getElementById('fpsControlArea');
 
 const modeControlArea = document.getElementById('modeControlArea');
 const durationSettingRow = document.getElementById('durationSettingRow');
@@ -1299,7 +1301,8 @@ async function exportInstantVideo(startTime, endTime, ext, mimeType) {
   }
 
   const duration = Math.max(0.1, endTime - startTime);
-  const fps = 60;
+  const selectedFps = fpsSelect ? parseInt(fpsSelect.value, 10) || 60 : 60;
+  const fps = selectedFps;
   const totalFrames = Math.max(1, Math.round(duration * fps));
   const stepTime = 1 / fps;
 
@@ -1323,8 +1326,8 @@ async function exportInstantVideo(startTime, endTime, ext, mimeType) {
     if (l.type === 'video') connectLayerAudio(l);
   });
 
-  // MediaRecorder でストリームを 60fps 高滑らかキャプチャ
-  const stream = canvas.captureStream(60);
+  // MediaRecorder でストリームを高滑らかキャプチャ (FPS連動)
+  const stream = canvas.captureStream(fps);
 
   // 音声トラックをストリームに合成
   if (audioDestNode && audioDestNode.stream) {
@@ -1333,7 +1336,8 @@ async function exportInstantVideo(startTime, endTime, ext, mimeType) {
       stream.addTrack(track);
     });
   }
-  let options = mimeType ? { mimeType, videoBitsPerSecond: 16000000 } : { videoBitsPerSecond: 16000000 };
+  const bitrate = fps >= 120 ? 32000000 : (fps >= 60 ? 18000000 : 10000000);
+  let options = mimeType ? { mimeType, videoBitsPerSecond: bitrate } : { videoBitsPerSecond: bitrate };
   let chunks = [];
   let recorder;
 
@@ -1580,6 +1584,7 @@ function updateExportUIState() {
 
   // 静止画形式の場合
   if (selectedFormat === 'png' || selectedFormat === 'jpg') {
+    if (fpsControlArea) fpsControlArea.style.display = 'none';
     if (modeControlArea) modeControlArea.style.display = 'none';
     if (durationSettingRow) durationSettingRow.style.display = 'none';
     if (recordBtn) {
@@ -1588,6 +1593,13 @@ function updateExportUIState() {
       recordBtn.disabled = false;
     }
     return;
+  }
+
+  // GIF形式の場合
+  if (selectedFormat === 'gif') {
+    if (fpsControlArea) fpsControlArea.style.display = 'none';
+  } else {
+    if (fpsControlArea) fpsControlArea.style.display = 'block';
   }
 
   // 動画・GIFの場合
@@ -1825,7 +1837,8 @@ function startExport() {
     if (l.type === 'video') connectLayerAudio(l);
   });
 
-  const stream = canvas.captureStream(60);
+  const selectedFps = fpsSelect ? parseInt(fpsSelect.value, 10) || 60 : 60;
+  const stream = canvas.captureStream(selectedFps);
 
   // 音声トラックをストリームに合成
   if (audioDestNode && audioDestNode.stream) {
@@ -1835,7 +1848,8 @@ function startExport() {
     });
   }
 
-  let options = mimeType ? { mimeType, videoBitsPerSecond: 16000000 } : { videoBitsPerSecond: 16000000 };
+  const bitrate = selectedFps >= 120 ? 32000000 : (selectedFps >= 60 ? 18000000 : 10000000);
+  let options = mimeType ? { mimeType, videoBitsPerSecond: bitrate } : { videoBitsPerSecond: bitrate };
   recordedChunks = [];
 
   try {
