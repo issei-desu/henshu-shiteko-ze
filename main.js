@@ -1073,8 +1073,8 @@ function animationLoop(timestamp) {
       if (currentTime >= layer.startTime && currentTime <= layer.endTime) {
         const dur = layer.element.duration || 1;
         const expectedOffset = (currentTime - layer.startTime) % dur;
-        // 通常再生中もズレが0.15秒以上開いたら滑らかに補正
-        if (Math.abs(layer.element.currentTime - expectedOffset) > 0.15) {
+        // 通常再生中は 0.4秒以上の大きな乖離がある場合のみ currentTime を補正（過剰シークによるカクつき防止）
+        if (Math.abs(layer.element.currentTime - expectedOffset) > 0.4) {
           layer.element.currentTime = expectedOffset;
         }
         if (layer.element.paused) {
@@ -1299,7 +1299,7 @@ async function exportInstantVideo(startTime, endTime, ext, mimeType) {
   }
 
   const duration = Math.max(0.1, endTime - startTime);
-  const fps = 30;
+  const fps = 60;
   const totalFrames = Math.max(1, Math.round(duration * fps));
   const stepTime = 1 / fps;
 
@@ -1323,8 +1323,8 @@ async function exportInstantVideo(startTime, endTime, ext, mimeType) {
     if (l.type === 'video') connectLayerAudio(l);
   });
 
-  // MediaRecorder でストリームをキャプチャ
-  const stream = canvas.captureStream(fps);
+  // MediaRecorder でストリームを 60fps 高滑らかキャプチャ
+  const stream = canvas.captureStream(60);
 
   // 音声トラックをストリームに合成
   if (audioDestNode && audioDestNode.stream) {
@@ -1333,7 +1333,7 @@ async function exportInstantVideo(startTime, endTime, ext, mimeType) {
       stream.addTrack(track);
     });
   }
-  let options = mimeType ? { mimeType } : {};
+  let options = mimeType ? { mimeType, videoBitsPerSecond: 16000000 } : { videoBitsPerSecond: 16000000 };
   let chunks = [];
   let recorder;
 
@@ -1825,7 +1825,7 @@ function startExport() {
     if (l.type === 'video') connectLayerAudio(l);
   });
 
-  const stream = canvas.captureStream(30);
+  const stream = canvas.captureStream(60);
 
   // 音声トラックをストリームに合成
   if (audioDestNode && audioDestNode.stream) {
@@ -1835,7 +1835,7 @@ function startExport() {
     });
   }
 
-  let options = mimeType ? { mimeType } : {};
+  let options = mimeType ? { mimeType, videoBitsPerSecond: 16000000 } : { videoBitsPerSecond: 16000000 };
   recordedChunks = [];
 
   try {
