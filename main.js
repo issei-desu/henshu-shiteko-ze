@@ -1017,6 +1017,7 @@ playBtn.addEventListener('click', () => {
     layers.forEach(l => {
       if (l.type === 'video') connectLayerAudio(l);
     });
+    syncVideosToTime(true);
     lastTimestamp = performance.now();
     requestAnimationFrame(animationLoop);
   } else {
@@ -1032,17 +1033,20 @@ playBtn.addEventListener('click', () => {
 timeSeeker.addEventListener('input', (e) => {
   currentTime = parseFloat(e.target.value);
   currentTimeDisplay.textContent = formatTime(currentTime);
-  syncVideosToTime();
+  syncVideosToTime(true);
   renderFrame();
 });
 
-function syncVideosToTime() {
+function syncVideosToTime(force = false) {
   layers.forEach(layer => {
-    if (layer.type === 'video' && layer.ready) {
+    if (layer.type === 'video' && layer.ready && layer.element) {
       if (currentTime >= layer.startTime && currentTime <= layer.endTime) {
         const dur = layer.element.duration || 1;
-        const offset = (currentTime - layer.startTime) % dur;
-        layer.element.currentTime = offset;
+        const targetOffset = (currentTime - layer.startTime) % dur;
+        // 0.1秒以上のズレがある場合、または強制同期(force)の時に currentTime を補正
+        if (force || Math.abs(layer.element.currentTime - targetOffset) > 0.12) {
+          layer.element.currentTime = targetOffset;
+        }
       }
     }
   });
@@ -1057,15 +1061,25 @@ function animationLoop(timestamp) {
   currentTime += delta;
   if (currentTime > maxDuration) {
     currentTime = 0;
+    // ループ時に全動画を先頭（0秒時点）へ強制同期！
+    syncVideosToTime(true);
   }
 
   timeSeeker.value = currentTime;
   currentTimeDisplay.textContent = formatTime(currentTime);
 
   layers.forEach(layer => {
-    if (layer.type === 'video' && layer.ready) {
+    if (layer.type === 'video' && layer.ready && layer.element) {
       if (currentTime >= layer.startTime && currentTime <= layer.endTime) {
-        if (layer.element.paused) layer.element.play();
+        const dur = layer.element.duration || 1;
+        const expectedOffset = (currentTime - layer.startTime) % dur;
+        // 通常再生中もズレが0.15秒以上開いたら滑らかに補正
+        if (Math.abs(layer.element.currentTime - expectedOffset) > 0.15) {
+          layer.element.currentTime = expectedOffset;
+        }
+        if (layer.element.paused) {
+          layer.element.play().catch(() => {});
+        }
       } else {
         if (!layer.element.paused) layer.element.pause();
       }
